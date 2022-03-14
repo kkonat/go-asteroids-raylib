@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
@@ -39,11 +37,11 @@ func (w *world) drawObjects() {
 		m := o.getTransfMatrix()
 		mv := rl.MatrixMultiply(m, w.camMat)
 		rl.SetMatrixModelview(mv)
-		fmt.Println(mv)
+
 		o.Draw()
 	}
 	rl.SetMatrixModelview(w.camMat)
-	fmt.Println(w.camMat)
+
 }
 
 func (w *world) animate(time_inc float32) {

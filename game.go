@@ -8,6 +8,10 @@ type game struct {
 	sW, sH int32
 }
 
+const (
+	caption = "test bum bum game"
+)
+
 func newGame(w, h int32) *game {
 	g := new(game)
 	g.sW, g.sH = w, h
@@ -18,7 +22,7 @@ func newGame(w, h int32) *game {
 func (g *game) displayStatus() {
 
 	rl.DrawRectangleV(rl.NewVector2(0, 20), rl.NewVector2(float32(g.sW), 26), rl.White)
-	rl.DrawText("Simplex noise test", 20, 20, 20, rl.DarkGray)
+	rl.DrawText(caption, 20, 20, 20, rl.DarkGray)
 	rl.DrawLine(18, 42, g.sW-18, 42, rl.Black)
 	rl.DrawFPS(g.sW-80, 20)
 }
@@ -26,7 +30,7 @@ func (g *game) prepareDisplay() {
 
 	rl.SetConfigFlags(rl.FlagMsaa4xHint | rl.FlagVsyncHint | rl.FlagWindowMaximized)
 
-	rl.InitWindow(g.sW, g.sH, "raylib [shapes] example - basic shapes drawing")
+	rl.InitWindow(g.sW, g.sH, caption)
 	rl.MaximizeWindow()
 
 	//rl.SetTargetFPS(60)
