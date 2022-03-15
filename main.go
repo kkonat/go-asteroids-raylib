@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"math"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -61,15 +60,41 @@ func (s *shape) add(p V2) {
 	s.points = append(s.points, p)
 }
 
+type trail struct {
+	trail                []V2
+	trailAge             []int
+	trailHead, trailTail int
+	color                rl.Color
+	width                float32
+}
+
+func newTrail(size uint16, c rl.Color, w float32) *trail {
+	t := new(trail)
+	t.trail = make([]V2, size)
+	t.trailAge = make([]int, size)
+	t.color = c
+	t.width = w
+	return t
+}
+func (t *trail) addPoint(p V2) {
+	idx := t.trailTail
+	if idx < len(t.trail) {
+		t.trail[idx] = p
+		t.trailAge[idx]++
+		t.trailTail++
+	}
+}
+
 type ship struct {
 	pos, speed, ds V2
 
-	rot  float32
-	shp  shape
-	rotM M22
-	mass float32
-	fuel float32
-	col  rl.Color
+	rot    float32
+	shp    shape
+	rotM   M22
+	mass   float32
+	fuel   float32
+	col    rl.Color
+	Slides bool
 }
 
 func newShip(mass, fuel float32) *ship {
@@ -88,6 +113,8 @@ func newShip(mass, fuel float32) *ship {
 func (s *ship) Draw() {
 	var ppx, ppy, npx, npy int32
 	var v V2
+
+	// draw ship
 	for i, p := range s.shp.points {
 		np := M22V2mul(s.rotM, p)
 		np = V2add(np, s.pos)
@@ -101,10 +128,14 @@ func (s *ship) Draw() {
 	np := V2add(s.pos, v)
 	npx, npy = int32(np.x), int32(np.y)
 	rl.DrawLine(ppx, ppy, npx, npy, s.col)
-	s.pos = V2add(s.pos, s.speed)
-	s.speed = V2V(s.speed, 0.997)
 
-	rl.DrawLineEx(rl.Vector2{X: s.pos.x, Y: s.pos.y}, rl.Vector2{X: s.pos.x - s.ds.x*200, Y: s.pos.y - s.ds.y*200}, 4.1, rl.Orange)
+	// draw thruster
+	rl.DrawLineEx(rl.Vector2{X: s.pos.x - s.ds.x*200, Y: s.pos.y - s.ds.y*200}, rl.Vector2{X: s.pos.x - s.ds.x*400, Y: s.pos.y - s.ds.y*400}, 4.1, rl.Orange)
+
+	// update velues
+	s.pos = V2add(s.pos, s.speed)
+	s.speed = V2V(s.speed, 0.9975)
+
 }
 func (s *ship) thrust(fuelCons float32) {
 	//if s.fuel > 0 {
@@ -127,12 +158,13 @@ func main() {
 	for !rl.WindowShouldClose() {
 		if !game.sm.isPlaying(0) {
 			game.sm.play(game.sm.sSpace)
-
-			fmt.Println("started")
+			//			fmt.Println("start backg sound")
 		}
 
 		if rl.IsKeyPressed('Q') {
 			game.sm.playM(game.sm.sOinx)
+			game.ship.speed = V2{0, 0}
+			game.ship.pos = V2{720, 360}
 		}
 		if rl.IsKeyPressed('M') {
 			if !game.sm.mute {
@@ -144,14 +176,16 @@ func main() {
 		if rl.IsKeyDown('A') {
 			game.ship.rotate(-2)
 		}
+		if rl.IsKeyPressed('S') {
+			game.sm.play(game.sm.sThrust)
+			game.ship.Slides = false
+		}
 		if rl.IsKeyDown('S') {
 			game.ship.thrust(1.0)
-			if !game.sm.isPlaying(game.sm.sThrust) {
-				game.sm.play(game.sm.sThrust)
-			}
 		}
 		if rl.IsKeyReleased('S') {
 			game.ship.thrust(0)
+			game.ship.Slides = true
 			game.sm.stop(game.sm.sThrust)
 		}
 		if rl.IsKeyDown('D') {
@@ -159,7 +193,7 @@ func main() {
 		}
 
 		game.drawGame()
-
+		game.constrainShip()
 	}
 	game.finalize()
 

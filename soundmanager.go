@@ -7,6 +7,10 @@ import (
 type soundManager struct {
 	sSpace, sOinx, sThrust int
 	sounds                 []rl.Sound
+	volumes                []float32
+	maxvolumes             []float32
+	fadecount              []int32
+	fade                   bool
 	mute                   bool
 }
 
@@ -14,7 +18,7 @@ func newSoundManager() *soundManager {
 	rl.InitAudioDevice()
 	sm := new(soundManager)
 	sm.sSpace = sm.loadSound("res/space.ogg", 0.5, 0.52)
-	sm.sOinx = sm.loadSound("res/oinxL.ogg", 1.0, 1.0)
+	sm.sOinx = sm.loadSound("res/oinxL.ogg", 0.7, 1.0)
 	sm.sThrust = sm.loadSound("res/thrust.ogg", 1.0, 1.0)
 	sm.mute = false
 	return sm
@@ -26,17 +30,49 @@ func (sm *soundManager) loadSound(fname string, volume, pitch float32) int {
 	rl.SetSoundPitch(snd, pitch)
 	rl.SetSoundVolume(snd, volume)
 	sm.sounds = append(sm.sounds, snd)
-
+	sm.volumes = append(sm.volumes, volume)
+	sm.maxvolumes = append(sm.maxvolumes, volume)
+	sm.fadecount = append(sm.fadecount, 0)
 	return len(sm.sounds) - 1
 }
 func (sm *soundManager) stop(idx int) {
-	rl.PauseSound(sm.sounds[idx])
-	rl.StopSound(sm.sounds[idx])
+	sm.fade = true
+	sm.fadecount[idx] = 60
+	//rl.StopSound(sm.sounds[idx])
+	//fmt.Println("fade:", idx)
+}
+func (sm *soundManager) doFade() {
+	var notFading = 0
+	if sm.fade {
+		for i, c := range sm.fadecount {
+			if c > 0 {
 
+				v := sm.volumes[i] * 0.95
+				sm.volumes[i] = v
+				rl.SetSoundVolume(sm.sounds[i], v)
+				c--
+				sm.fadecount[i] = c
+				if c == 0 {
+					notFading++
+					rl.StopSound(sm.sounds[i])
+				}
+			} else {
+				notFading++
+			}
+		}
+		if notFading == len(sm.fadecount) {
+			sm.fade = false
+		}
+	}
 }
 func (sm *soundManager) play(idx int) {
 	if !sm.mute {
+		sm.fadecount[idx] = 0
+		rl.SetSoundVolume(sm.sounds[idx], sm.maxvolumes[idx])
+		sm.volumes[idx] = sm.maxvolumes[idx]
+
 		rl.PlaySound(sm.sounds[idx])
+
 	}
 }
 func (sm *soundManager) playM(idx int) {

@@ -34,7 +34,32 @@ func newGame(w, h int32) *game {
 	g.prepareDisplay()
 	return g
 }
+func (g *game) constrainShip() {
+	const limit = 40
+	const getback = 0.5
+	if g.ship.pos.x < limit || g.ship.pos.x > float32(g.sW-limit) || g.ship.pos.y < limit || g.ship.pos.y > float32(g.sH-limit) {
+		if g.ship.Slides {
+			g.ship.speed = V2V(g.ship.speed, 0.9)
+			if g.ship.speed.x*g.ship.speed.x+g.ship.speed.x*g.ship.speed.x < 0.01 {
+				g.ship.Slides = false
+			}
+		} else {
+			if g.ship.pos.x < float32(limit) {
+				g.ship.speed.x = getback
+			}
+			if g.ship.pos.x > float32(g.sW-limit) {
+				g.ship.speed.x = -getback
+			}
+			if g.ship.pos.y < float32(limit) {
+				g.ship.speed.y = getback
+			}
+			if g.ship.pos.y > float32(g.sH-limit) {
+				g.ship.speed.y = -getback
+			}
+		}
 
+	}
+}
 func (g *game) drawStatusBar() {
 
 	rl.DrawRectangle(0, g.sH-20, g.sW, 26, rl.DarkPurple)
@@ -42,17 +67,7 @@ func (g *game) drawStatusBar() {
 	//rl.DrawLine(18, 42, g.sW-18, 42, rl.Black)
 	rl.DrawFPS(g.sW-80, g.sH-20)
 }
-func (g *game) drawGrid() {
-	const step = 40
 
-	for i := int32(0); i < g.sH; i += step {
-		rl.DrawLine(0, i, g.sW, i, rl.DarkGray)
-	}
-	for i := int32(0); i < g.sW; i += step {
-		rl.DrawLine(i, 0, i, g.sH, rl.DarkGray)
-	}
-
-}
 func (g *game) prepareDisplay() {
 
 	rl.SetConfigFlags(rl.FlagMsaa4xHint | rl.FlagVsyncHint | rl.FlagWindowMaximized)
@@ -71,8 +86,8 @@ func (gme *game) drawGame() {
 	//gme.drawGrid()
 	gme.sf.draw()
 	gme.ship.Draw()
-	gme.drawStatusBar() // draw on top of everything
-
+	gme.drawStatusBar() // draw status bar on top of everything
+	gme.sm.doFade()     // fade out sounds if needed
 	rl.EndDrawing()
 
 }
