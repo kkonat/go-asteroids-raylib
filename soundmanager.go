@@ -5,16 +5,17 @@ import (
 )
 
 type soundManager struct {
-	sSpace, sOinx int
-	sounds        []rl.Sound
-	mute          bool
+	sSpace, sOinx, sThrust int
+	sounds                 []rl.Sound
+	mute                   bool
 }
 
 func newSoundManager() *soundManager {
 	rl.InitAudioDevice()
 	sm := new(soundManager)
-	sm.sSpace = sm.loadSound("res/space.ogg", 1.0, 0.52)
-	sm.sOinx = sm.loadSound("res/oinx.wav", 1.0, 1.0)
+	sm.sSpace = sm.loadSound("res/space.ogg", 0.5, 0.52)
+	sm.sOinx = sm.loadSound("res/oinxL.ogg", 1.0, 1.0)
+	sm.sThrust = sm.loadSound("res/thrust.ogg", 1.0, 1.0)
 	sm.mute = false
 	return sm
 }
@@ -29,7 +30,9 @@ func (sm *soundManager) loadSound(fname string, volume, pitch float32) int {
 	return len(sm.sounds) - 1
 }
 func (sm *soundManager) stop(idx int) {
+	rl.PauseSound(sm.sounds[idx])
 	rl.StopSound(sm.sounds[idx])
+
 }
 func (sm *soundManager) play(idx int) {
 	if !sm.mute {

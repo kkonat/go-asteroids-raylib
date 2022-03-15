@@ -1,1 +1,0 @@
-trying out go language with raylib

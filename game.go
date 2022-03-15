@@ -10,6 +10,7 @@ import (
 type game struct {
 	sm     *soundManager
 	sf     *starfield
+	ship   *ship
 	sW, sH int32
 }
 
@@ -26,6 +27,9 @@ func newGame(w, h int32) *game {
 	g.sf = newStarfield(w, h)
 
 	g.sm = newSoundManager()
+
+	g.ship = newShip(1000, 1000)
+	g.ship.pos = V2{720, 360}
 
 	g.prepareDisplay()
 	return g
@@ -66,6 +70,7 @@ func (gme *game) drawGame() {
 	rl.ClearBackground(rl.Black)
 	//gme.drawGrid()
 	gme.sf.draw()
+	gme.ship.Draw()
 	gme.drawStatusBar() // draw on top of everything
 
 	rl.EndDrawing()
