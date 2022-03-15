@@ -1,10 +1,15 @@
 package main
 
 import (
+	"math/rand"
+	"time"
+
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
 type game struct {
+	sm     *soundManager
+	sf     *starfield
 	sW, sH int32
 }
 
@@ -13,45 +18,56 @@ const (
 )
 
 func newGame(w, h int32) *game {
+	rand.Seed(time.Now().UnixNano())
+
 	g := new(game)
 	g.sW, g.sH = w, h
+
+	g.sf = newStarfield(w, h)
+
+	g.sm = newSoundManager()
+
 	g.prepareDisplay()
 	return g
 }
 
-func (g *game) displayStatus() {
+func (g *game) drawStatusBar() {
 
-	rl.DrawRectangleV(rl.NewVector2(0, 20), rl.NewVector2(float32(g.sW), 26), rl.White)
-	rl.DrawText(caption, 20, 20, 20, rl.DarkGray)
-	rl.DrawLine(18, 42, g.sW-18, 42, rl.Black)
-	rl.DrawFPS(g.sW-80, 20)
+	rl.DrawRectangle(0, g.sH-20, g.sW, 26, rl.DarkPurple)
+	rl.DrawText(caption, 20, g.sH-20, 20, rl.Magenta)
+	//rl.DrawLine(18, 42, g.sW-18, 42, rl.Black)
+	rl.DrawFPS(g.sW-80, g.sH-20)
+}
+func (g *game) drawGrid() {
+	const step = 40
+
+	for i := int32(0); i < g.sH; i += step {
+		rl.DrawLine(0, i, g.sW, i, rl.DarkGray)
+	}
+	for i := int32(0); i < g.sW; i += step {
+		rl.DrawLine(i, 0, i, g.sH, rl.DarkGray)
+	}
+
 }
 func (g *game) prepareDisplay() {
 
 	rl.SetConfigFlags(rl.FlagMsaa4xHint | rl.FlagVsyncHint | rl.FlagWindowMaximized)
 
 	rl.InitWindow(g.sW, g.sH, caption)
+
 	rl.MaximizeWindow()
 
-	//rl.SetTargetFPS(60)
+	rl.SetTargetFPS(60)
 }
 
-func (g *game) drawGame(w *world) {
-
-	rl.UpdateCamera(&w.camera)
+func (gme *game) drawGame() {
 
 	rl.BeginDrawing()
 	rl.ClearBackground(rl.Black)
+	//gme.drawGrid()
+	gme.sf.draw()
+	gme.drawStatusBar() // draw on top of everything
 
-	rl.BeginMode3D(w.camera)
-
-	w.drawBackground()
-	w.drawObjects()
-
-	rl.EndMode3D()
-
-	g.displayStatus()
-	//rl.DrawTexture(tex, 0, 0, rl.White)
 	rl.EndDrawing()
 
 }
@@ -61,4 +77,5 @@ func (g *game) resizeDisplay() {
 }
 func (g *game) finalize() {
 	rl.CloseWindow()
+	g.sm.unloadAll()
 }
