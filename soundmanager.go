@@ -36,11 +36,21 @@ func (sm *soundManager) loadSound(fname string, volume, pitch float32) int {
 	return len(sm.sounds) - 1
 }
 func (sm *soundManager) stop(idx int) {
-	sm.fade = true
-	sm.fadecount[idx] = 60
+
+	// As it turns out, in raylib you can not simply stop playing sound, because you will hear a pop
+	// You have to gently fade the sound out and when its barely audible, you can stop it
+
+	// So, it was like:
 	//rl.StopSound(sm.sounds[idx])
 	//fmt.Println("fade:", idx)
+
+	// but now, it has to be:
+	sm.fade = true         // tell the doFade() that ther's something to fade out
+	sm.fadecount[idx] = 60 // fade out in this many steps
+
 }
+
+// so this function is called every frame to check if there's anything to fade out
 func (sm *soundManager) doFade() {
 	var notFading = 0
 	if sm.fade {

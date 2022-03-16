@@ -27,7 +27,7 @@ func newStarfield(w, h int32) *starfield {
 	for i := 0; i < starsNo; i++ {
 		s.x = rand.Float32() * float32(w)
 		s.y = rand.Int31n(h)
-		s.speed = rand.Float32() * 10.0
+		s.speed = rand.Float32() * 5.0
 		s.r = uint8(rand.Int31n(40) * 3)
 		sf.stars[i] = s
 	}
@@ -46,8 +46,8 @@ func (sf *starfield) draw() {
 		c.R = s.r
 
 		//rl.DrawPixel(int32(s.x), int32(s.y), c)
-		rl.DrawCircle(int32(s.x), int32(s.y), 1+float32(s.speed/6.0), c)
-		x = s.x + s.speed*0.2
+		rl.DrawCircle(int32(s.x), int32(s.y), 1+float32(s.speed/3.0), c)
+		x = s.x + s.speed*0.025
 		if x > float32(sf.w) {
 			x -= float32(sf.w)
 		}
