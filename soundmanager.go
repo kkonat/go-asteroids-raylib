@@ -14,13 +14,13 @@ type soundManager struct {
 	mute                   bool
 }
 
-func newSoundManager() *soundManager {
+func newSoundManager(mute bool) *soundManager {
 	rl.InitAudioDevice()
 	sm := new(soundManager)
 	sm.sSpace = sm.loadSound("res/space.ogg", 0.5, 0.52)
 	sm.sOinx = sm.loadSound("res/oinxL.ogg", 0.7, 1.0)
 	sm.sThrust = sm.loadSound("res/thrust.ogg", 1.0, 1.0)
-	sm.mute = false
+	sm.mute = mute
 	return sm
 }
 
