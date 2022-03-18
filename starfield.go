@@ -47,7 +47,7 @@ func (sf *starfield) draw() {
 
 		//rl.DrawPixel(int32(s.x), int32(s.y), c)
 		rl.DrawCircle(int32(s.x), int32(s.y), 1+float32(s.speed/3.0), c)
-		x = s.x + s.speed*0.025
+		x = s.x + s.speed*0.2
 		if x > float32(sf.w) {
 			x -= float32(sf.w)
 		}

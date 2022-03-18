@@ -1,45 +1,58 @@
 package main
 
 import (
-	"math/rand"
+	"fmt"
 	"time"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
+)
+
+const (
+	caption      = "test bum bum game"
+	rSpeedMax    = 1
+	initialRocks = 12
+	maxRocks     = 100
+	maxMissiles  = 50
 )
 
 type game struct {
 	sm         *soundManager
 	sf         *starfield
 	ship       *Ship
-	rocks      []Rock
-	missiles   [50]*missile
+	rocks      [maxRocks]*Rock
+	rocksNo    int
+	missiles   [maxMissiles]*missile
 	missilesNo int
 	sW, sH     int32
 }
 
-const (
-	caption   = "test bum bum game"
-	rSpeedMax = 1
-)
+var tnow, tprev int64
 
 func newGame(w, h int32) *game {
-	rand.Seed(time.Now().UnixNano())
+
+	const safeCircle = 200
 
 	g := new(game)
 	g.sW, g.sH = w, h
-
+	cX, cY := w/2, h/2
 	g.sf = newStarfield(w, h)
 
 	g.sm = newSoundManager(true)
 
-	g.ship = newShip(720, 360, 1000, 1000)
-
-	for i := 0; i < noRocks; i++ {
-		nr := *newRock(g)
-		g.rocks = append(g.rocks, nr)
+	g.ship = newShip(float64(cX), float64(cY), 1000, 1000)
+	i := 0
+	for i < initialRocks { // ( cx +r )  ( nr.x +nr.r)
+		nr := newRockRandom(g)
+		if float64(cX+safeCircle) < nr.m.pos.x+nr.radius || float64(cX-safeCircle) > nr.m.pos.x-nr.radius ||
+			float64(cY+safeCircle) < nr.m.pos.y+nr.radius || float64(cY-safeCircle) > nr.m.pos.y-nr.radius {
+			g.rocks[i] = nr
+			i++
+		}
 	}
+	g.rocksNo = i
 
 	g.prepareDisplay()
+	tnow = time.Now().Local().UnixMicro()
 	return g
 }
 
@@ -59,8 +72,25 @@ func (g *game) prepareDisplay() {
 	rl.MaximizeWindow()
 
 	rl.SetTargetFPS(60)
-}
 
+}
+func (gme *game) moveRocks(dt float64) {
+
+	for i := 0; i < gme.rocksNo; i++ { // move rocks
+		gme.rocks[i].m.Move(dt)
+	}
+}
+func (gme *game) moveMissiles(dt float64) {
+
+	for i := 0; i < gme.rocksNo; i++ { // move rocks
+		gme.rocks[i].m.Move(dt)
+	}
+
+	for i := 0; i < gme.missilesNo; i++ { // move missiles
+		gme.missiles[i].m.Move(dt)
+
+	}
+}
 func (gme *game) drawGame() {
 
 	rl.BeginDrawing()
@@ -69,27 +99,35 @@ func (gme *game) drawGame() {
 
 	gme.sf.draw() // draw starfield
 
-	gme.ship.Draw() // draw ship
-
-	for i := range gme.rocks { // draw rocks
+	for i := 0; i < gme.rocksNo; i++ { // draw rocks
 		gme.rocks[i].Draw()
 	}
 
-	i := 0
-	for i < gme.missilesNo { // draw missiles
+	for i := 0; i < gme.missilesNo; i++ { // draw missiles
 		gme.missiles[i].Draw()
 
-		i++
 	}
+
+	gme.ship.Draw() // draw ship
 
 	gme.drawStatusBar() // draw status bar on top of everything
 	gme.sm.doFade()     // fade out sounds if needed
 
 	rl.EndDrawing()
-
+	tnow = time.Now().UnixMicro()
+	elapsed := tnow - tprev
+	tprev = tnow
+	dt := float64(elapsed) / 16666.0
+	fmt.Println(dt)
+	gme.ship.m.Move(dt)
+	gme.moveRocks(dt)
+	gme.moveMissiles(dt)
+	gme.process_missile_hits()
 	gme.constrainShip()
 	gme.constrainRocks()
 	gme.constrainMissiles()
+	//	gme.animatestuff()
+
 }
 
 func (g *game) finalize() {

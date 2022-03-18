@@ -18,27 +18,25 @@ func (v1 *V2) Incr(v2 V2) {
 	v1.x += v2.x
 	v1.y += v2.y
 }
-func (v1 V2) Add(v2 V2) V2 {
-	return V2{v1.x + v2.x, v1.y + v2.y}
-}
-func (v1 V2) Mul(v2 V2) V2 {
-	return V2{v1.x * v2.x, v1.y * v2.y}
-}
+
 func (v1 V2) MulA(a float64) V2 {
 	return V2{v1.x * a, v1.y * a}
 }
 func (v V2) Len() float64 {
-	return math.Sqrt(v.x*v.x + v.y + v.y)
+	return math.Sqrt(v.x*v.x + v.y*v.y)
 }
-func (v V2) Len2() float64 {
-	return v.x*v.x + v.y + v.y
+func (v V2) Len2() float64 { // Lenght suared
+	return v.x*v.x + v.y*v.y
 }
+func V2Mul(v1, v2 V2) V2   { return V2{v1.x * v2.x, v1.y * v2.y} }
+func (v1 V2) Mul(v2 V2) V2 { return V2{v1.x * v2.x, v1.y * v2.y} }
 
-func V2Add(a, b V2) V2 { // vector addition
-	var v V2
-	v.x, v.y = a.x+b.x, a.y+b.y
-	return v
-}
+func V2Add(a, b V2) V2   { return V2{a.x + b.x, a.y + b.y} }
+func (a V2) Add(b V2) V2 { return V2{a.x + b.x, a.y + b.y} }
+
+func V2Sub(a, b V2) V2   { return V2{a.x - b.x, a.y - b.y} }
+func (a V2) Sub(b V2) V2 { return V2{a.x - b.x, a.y - b.y} }
+
 func V2MulA(v V2, a float64) V2 { // vector x scalar multiplication
 	var nv V2
 	nv.x, nv.y = v.x*a, v.y*a
@@ -50,6 +48,13 @@ func M22MulV(m M22, v V2) V2 { // matrix x vector multiplication
 	r.y = m.a10*v.x + m.a11*v.y
 	return r
 }
+func M22pMulV(m *M22, v V2) V2 { // matrix x vector multiplication
+	var r V2
+	r.x = m.a00*v.x + m.a01*v.y
+	r.y = m.a10*v.x + m.a11*v.y
+	return r
+}
+
 func M22Id() M22 {
 	var m M22
 	m.a00, m.a11 = 1, 1
