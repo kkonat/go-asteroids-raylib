@@ -4,7 +4,7 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-type Ship struct {
+type ship struct {
 	shape     *shape
 	m         *motion
 	thr       V2
@@ -18,9 +18,9 @@ const S = 16
 
 var shipShape = []V2{{-S / 2, -S}, {0, S}, {S / 2, -S}}
 
-func newShip(posX, posY, mass, fuel float64) *Ship {
+func newShip(posX, posY, mass, fuel float64) *ship {
 
-	s := new(Ship)
+	s := new(ship)
 	s.shape = newShape(shipShape)
 	s.m = newMotion()
 	s.m.pos.x, s.m.pos.y = posX, posY
@@ -29,7 +29,7 @@ func newShip(posX, posY, mass, fuel float64) *Ship {
 	s.fuel = fuel
 	return s
 }
-func (s *Ship) Draw() {
+func (s *ship) Draw() {
 
 	s.shape.Draw(s.m, rl.DarkGray, s.col)
 
@@ -44,7 +44,7 @@ func (s *Ship) Draw() {
 	s.m.speed = V2MulA(s.m.speed, 0.9975)
 
 }
-func (s *Ship) thrust(fuelCons float64) {
+func (s *ship) thrust(fuelCons float64) {
 	//if s.fuel > 0 {
 	force := fuelCons
 	//	s.fuel -= fuelCons
@@ -53,6 +53,6 @@ func (s *Ship) thrust(fuelCons float64) {
 	s.m.speed = V2Add(s.m.speed, s.thr)
 }
 
-func (s *Ship) rotate(dSpeed float64) {
+func (s *ship) rotate(dSpeed float64) {
 	s.m.rotSpeed += dSpeed
 }

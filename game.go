@@ -18,12 +18,13 @@ const (
 type game struct {
 	sm         *soundManager
 	sf         *starfield
-	ship       *Ship
+	ship       *ship
 	rocks      [maxRocks]*Rock
 	rocksNo    int
 	missiles   [maxMissiles]*missile
 	missilesNo int
 	sW, sH     int32
+	gW, gH     float64
 }
 
 var tnow, tprev int64
@@ -34,17 +35,19 @@ func newGame(w, h int32) *game {
 
 	g := new(game)
 	g.sW, g.sH = w, h
-	cX, cY := w/2, h/2
+	g.gW, g.gH = float64(w), float64(h)
+
+	cX, cY := float64(w/2), float64(h/2)
+
 	g.sf = newStarfield(w, h)
-
 	g.sm = newSoundManager(true)
+	g.ship = newShip(cX, cY, 1000, 1000)
 
-	g.ship = newShip(float64(cX), float64(cY), 1000, 1000)
 	i := 0
 	for i < initialRocks { // ( cx +r )  ( nr.x +nr.r)
 		nr := newRockRandom(g)
-		if float64(cX+safeCircle) < nr.m.pos.x+nr.radius || float64(cX-safeCircle) > nr.m.pos.x-nr.radius ||
-			float64(cY+safeCircle) < nr.m.pos.y+nr.radius || float64(cY-safeCircle) > nr.m.pos.y-nr.radius {
+		if cX+safeCircle < nr.m.pos.x+nr.radius || cX-safeCircle > nr.m.pos.x-nr.radius ||
+			cY+safeCircle < nr.m.pos.y+nr.radius || cY-safeCircle > nr.m.pos.y-nr.radius {
 			g.rocks[i] = nr
 			i++
 		}
@@ -66,9 +69,7 @@ func (g *game) drawStatusBar() {
 func (g *game) prepareDisplay() {
 
 	rl.SetConfigFlags(rl.FlagMsaa4xHint | rl.FlagVsyncHint | rl.FlagWindowMaximized)
-
 	rl.InitWindow(g.sW, g.sH, caption)
-
 	rl.MaximizeWindow()
 
 	rl.SetTargetFPS(60)
@@ -91,7 +92,7 @@ func (gme *game) moveMissiles(dt float64) {
 
 	}
 }
-func (gme *game) drawGame() {
+func (gme *game) drawAndUpdate() {
 
 	rl.BeginDrawing()
 
@@ -114,6 +115,7 @@ func (gme *game) drawGame() {
 	gme.sm.doFade()     // fade out sounds if needed
 
 	rl.EndDrawing()
+
 	tnow = time.Now().UnixMicro()
 	elapsed := tnow - tprev
 	tprev = tnow

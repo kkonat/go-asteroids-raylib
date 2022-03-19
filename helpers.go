@@ -1,6 +1,10 @@
 package main
 
-import rl "github.com/gen2brain/raylib-go/raylib"
+import (
+	"math/rand"
+
+	rl "github.com/gen2brain/raylib-go/raylib"
+)
 
 func _line(p1, p2 V2, col rl.Color) {
 	rl.DrawLine(int32(p1.x), int32(p1.y), int32(p2.x), int32(p2.y), col)
@@ -21,3 +25,5 @@ func min(a, b float64) float64 {
 		return b
 	}
 }
+func rnd() float64              { return rand.Float64() }
+func squared(a float64) float64 { return a * a }

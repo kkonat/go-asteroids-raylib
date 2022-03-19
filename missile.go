@@ -22,7 +22,7 @@ func launchMissile(game *game) {
 	m.m.pos = game.ship.m.pos.Add(game.ship.m.speed)
 	spd := V2len(game.ship.m.speed)
 	m.m.rot = game.ship.m.rot
-	m.m.rotM = M22rot(game.ship.m.rot)
+	m.m.rotM = newM22rot(game.ship.m.rot)
 
 	dir := cs(m.m.rot)
 	m.m.speed = dir.MulA(spd + 2.0)

@@ -18,10 +18,20 @@ func (v1 *V2) Incr(v2 V2) {
 	v1.x += v2.x
 	v1.y += v2.y
 }
+func (v1 *V2) Decr(v2 V2) {
+	v1.x -= v2.x
+	v1.y -= v2.y
+}
 
+func V2MulA(v V2, a float64) V2 { // vector x scalar multiplication
+	var nv V2
+	nv.x, nv.y = v.x*a, v.y*a
+	return nv
+}
 func (v1 V2) MulA(a float64) V2 {
 	return V2{v1.x * a, v1.y * a}
 }
+
 func (v V2) Len() float64 {
 	return math.Sqrt(v.x*v.x + v.y*v.y)
 }
@@ -37,11 +47,8 @@ func (a V2) Add(b V2) V2 { return V2{a.x + b.x, a.y + b.y} }
 func V2Sub(a, b V2) V2   { return V2{a.x - b.x, a.y - b.y} }
 func (a V2) Sub(b V2) V2 { return V2{a.x - b.x, a.y - b.y} }
 
-func V2MulA(v V2, a float64) V2 { // vector x scalar multiplication
-	var nv V2
-	nv.x, nv.y = v.x*a, v.y*a
-	return nv
-}
+func (a V2) DivA(b float64) V2 { return V2{a.x / b, a.y / b} }
+
 func M22MulV(m M22, v V2) V2 { // matrix x vector multiplication
 	var r V2
 	r.x = m.a00*v.x + m.a01*v.y
@@ -55,7 +62,7 @@ func M22pMulV(m *M22, v V2) V2 { // matrix x vector multiplication
 	return r
 }
 
-func M22Id() M22 {
+func newM22Id() M22 {
 	var m M22
 	m.a00, m.a11 = 1, 1
 	return m
@@ -65,10 +72,9 @@ func V2len(v V2) float64 { // Vector length
 }
 func V2len2(v V2) float64 { // Vector length squared
 	return v.x*v.x + v.y*v.y
-
 }
 
-func M22rot(alpha float64) M22 {
+func newM22rot(alpha float64) M22 {
 	var m M22
 	rad := float64(alpha * math.Pi / 180.0)
 	m.a00, m.a01 = math.Cos(rad), -math.Sin(rad)

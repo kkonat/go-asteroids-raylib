@@ -5,25 +5,25 @@ import (
 )
 
 func (g *game) constrainShip() {
-	const limit = 40
+	const limit = 40.0
 	const getback = 0.5
-	if g.ship.m.pos.x < limit || g.ship.m.pos.x > float64(g.sW-limit) || g.ship.m.pos.y < limit || g.ship.m.pos.y > float64(g.sH-limit) {
+	if g.ship.m.pos.x < limit || g.ship.m.pos.x > g.gW-limit || g.ship.m.pos.y < limit || g.ship.m.pos.y > g.gH-limit {
 		if g.ship.isSliding {
 			g.ship.m.speed = V2MulA(g.ship.m.speed, 0.9)
 			if g.ship.m.pos.Len2() < 0.01 {
 				g.ship.isSliding = false
 			}
 		} else {
-			if g.ship.m.pos.x < float64(limit) {
+			if g.ship.m.pos.x < limit {
 				g.ship.m.speed.x = getback
 			}
-			if g.ship.m.pos.x > float64(g.sW-limit) {
+			if g.ship.m.pos.x > g.gW-limit {
 				g.ship.m.speed.x = -getback
 			}
-			if g.ship.m.pos.y < float64(limit) {
+			if g.ship.m.pos.y < limit {
 				g.ship.m.speed.y = getback
 			}
-			if g.ship.m.pos.y > float64(g.sH-limit) {
+			if g.ship.m.pos.y > g.gH-limit {
 				g.ship.m.speed.y = -getback
 			}
 		}
@@ -36,14 +36,14 @@ func (g *game) constrainRocks() {
 	for i := 0; i < g.rocksNo; i++ {
 
 		if (g.rocks[i].m.pos.x+g.rocks[i].radius < limit && g.rocks[i].m.speed.x < 0) ||
-			(g.rocks[i].m.pos.x-g.rocks[i].radius > float64(g.sW)-limit && g.rocks[i].m.speed.x > 0) ||
+			(g.rocks[i].m.pos.x-g.rocks[i].radius > g.gW-limit && g.rocks[i].m.speed.x > 0) ||
 			(g.rocks[i].m.pos.y+g.rocks[i].radius < limit && g.rocks[i].m.speed.y < 0) ||
-			(g.rocks[i].m.pos.y-g.rocks[i].radius > float64(g.sH)-limit && g.rocks[i].m.speed.y > 0) {
+			(g.rocks[i].m.pos.y-g.rocks[i].radius > g.gH-limit && g.rocks[i].m.speed.y > 0) {
 
 			// respawn rock in a new sector, first randomly on the screen
 			g.rocks[i].randomize()
-			g.rocks[i].m.speed = V2{rand.Float64()*rSpeedMax - rSpeedMax/2, rand.Float64()*rSpeedMax - rSpeedMax/2}
-			g.rocks[i].m.pos = V2{float64(rand.Int31n(g.sW)), float64(rand.Int31n(g.sH))}
+			g.rocks[i].m.speed = V2{rnd()*rSpeedMax - rSpeedMax/2, rnd()*rSpeedMax - rSpeedMax/2}
+			g.rocks[i].m.pos = V2{rnd() * g.gW, rnd() * g.gH}
 
 			p := &g.rocks[i].m.pos   // these variables addes to make the
 			s := &g.rocks[i].m.speed // switch statement below more redable
@@ -68,14 +68,14 @@ func (g *game) constrainRocks() {
 				}
 			case 2: // right
 				{
-					p.x = float64(g.sW) + r - limit
+					p.x = g.gW + r - limit
 					if s.x > 0 {
 						s.x = -s.x
 					}
 				}
 			case 3: // down
 				{
-					p.y = float64(g.sH) + r - limit
+					p.y = g.gH + r - limit
 					if s.y > 0 {
 						s.y = -s.y
 					}
@@ -91,8 +91,8 @@ func (g *game) constrainMissiles() {
 	i := 0
 	for i < g.missilesNo {
 		p := g.missiles[i].m.pos
-		if p.x <= limit || p.x > float64(g.sW-limit) ||
-			p.y <= limit || p.y > float64(g.sH-limit) {
+		if p.x <= limit || p.x > g.gW-limit ||
+			p.y <= limit || p.y > g.gH-limit {
 			g.deleteMissile(i)
 			continue
 		}

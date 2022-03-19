@@ -73,10 +73,10 @@ func main() {
 			game.ship.m.rotSpeed *= 0.9
 		}
 
-		game.drawGame()
+		game.drawAndUpdate()
 		dx, dy := rl.GetMouseDelta().X, rl.GetMouseDelta().X
 
-		if !cursorEnabled && dx*dx+dy*dy > 4 {
+		if !cursorEnabled && dx*dx+dy*dy > 16 {
 			rl.EnableCursor()
 			cursorEnabled = true
 		}
