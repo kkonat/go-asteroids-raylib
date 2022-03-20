@@ -10,7 +10,7 @@ import (
 const (
 	caption      = "test bum bum game"
 	rSpeedMax    = 1
-	initialRocks = 12
+	preferredRocks = 12
 	maxRocks     = 100
 	maxMissiles  = 50
 )
@@ -44,7 +44,7 @@ func newGame(w, h int32) *game {
 	g.ship = newShip(cX, cY, 1000, 1000)
 
 	i := 0
-	for i < initialRocks { // ( cx +r )  ( nr.x +nr.r)
+	for i < preferredRocks { // ( cx +r )  ( nr.x +nr.r)
 		nr := newRockRandom(g)
 		if cX+safeCircle < nr.m.pos.x+nr.radius || cX-safeCircle > nr.m.pos.x-nr.radius ||
 			cY+safeCircle < nr.m.pos.y+nr.radius || cY-safeCircle > nr.m.pos.y-nr.radius {

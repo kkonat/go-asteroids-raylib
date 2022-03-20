@@ -49,6 +49,10 @@ func (a V2) Sub(b V2) V2 { return V2{a.x - b.x, a.y - b.y} }
 
 func (a V2) DivA(b float64) V2 { return V2{a.x / b, a.y / b} }
 
+func (v V2) Norm() V2 {
+	return v.DivA(v.Len())
+}
+
 func M22MulV(m M22, v V2) V2 { // matrix x vector multiplication
 	var r V2
 	r.x = m.a00*v.x + m.a01*v.y

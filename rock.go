@@ -56,6 +56,7 @@ func (r *Rock) buildShape() {
 
 func (r *Rock) randomize() {
 	r.radius = 10 + rnd()*100
+	r.mass = squared(r.radius)
 	//n := 6 + rand.Intn(10) + int(r.radius/5)
 
 	r.buildShape()
@@ -170,5 +171,26 @@ func (r *Rock) split(hitat, speed V2, n int) []*Rock {
 			break
 		}
 	}
+	center := V2{0, 0}
+	for i, r := range newRocks {
+		newRocks[i].mass = squared(newRocks[i].radius)
+		center.Incr(r.m.pos)
+	}
+	center = center.DivA(float64(len(newRocks)))
+
+	for i, ir := range newRocks {
+		explodev := ir.m.pos.Sub(center).Norm()
+		rotv := V2{-explodev.y, explodev.x} //perpendicular
+		rotv = rotv.MulA(r.m.rotSpeed)
+		explthrust := r.m.pos.Sub(hitat).Norm()
+		missilethr := speed.Norm()
+		masscontrib := math.Sqrt(ir.mass) / 5
+		newspeed := explodev.Add(rotv).Add(explthrust).Add(missilethr).DivA(masscontrib)
+
+		newRocks[i].m.speed = r.m.speed.Add(newspeed)
+		newRocks[i].m.rot = (r.m.rot + rnd()*2.0 - 1) / 2
+	}
+	//rl.EndDrawing()
+
 	return newRocks
 }

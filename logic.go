@@ -40,48 +40,52 @@ func (g *game) constrainRocks() {
 			(g.rocks[i].m.pos.y+g.rocks[i].radius < limit && g.rocks[i].m.speed.y < 0) ||
 			(g.rocks[i].m.pos.y-g.rocks[i].radius > g.gH-limit && g.rocks[i].m.speed.y > 0) {
 
-			// respawn rock in a new sector, first randomly on the screen
-			g.rocks[i].randomize()
-			g.rocks[i].m.speed = V2{rnd()*rSpeedMax - rSpeedMax/2, rnd()*rSpeedMax - rSpeedMax/2}
-			g.rocks[i].m.pos = V2{rnd() * g.gW, rnd() * g.gH}
+			if g.rocksNo < preferredRocks {
 
-			p := &g.rocks[i].m.pos   // these variables addes to make the
-			s := &g.rocks[i].m.speed // switch statement below more redable
-			r := g.rocks[i].radius   // kind of hack'ish but reads easier
+				// respawn rock in a new sector, first randomly on the screen
+				g.rocks[i].randomize()
+				g.rocks[i].m.speed = V2{rnd()*rSpeedMax - rSpeedMax/2, rnd()*rSpeedMax - rSpeedMax/2}
+				g.rocks[i].m.pos = V2{rnd() * g.gW, rnd() * g.gH}
 
-			sect := rand.Intn(4) // random sector from wchich new rock is to originate
+				p := &g.rocks[i].m.pos   // these variables addes to make the
+				s := &g.rocks[i].m.speed // switch statement below more redable
+				r := g.rocks[i].radius   // kind of hack'ish but reads easier
 
-			switch sect { // move the rock off the screen
-			case 0: // left
-				{
-					p.x = -r + limit //
-					if s.x < 0 {
-						s.x = -s.x
+				sect := rand.Intn(4) // random sector from wchich new rock is to originate
+
+				switch sect { // move the rock off the screen
+				case 0: // left
+					{
+						p.x = -r + limit //
+						if s.x < 0 {
+							s.x = -s.x
+						}
+					}
+				case 1: // top
+					{
+						p.y = -r + limit
+						if s.y < 0 {
+							s.x = -s.x
+						}
+					}
+				case 2: // right
+					{
+						p.x = g.gW + r - limit
+						if s.x > 0 {
+							s.x = -s.x
+						}
+					}
+				case 3: // down
+					{
+						p.y = g.gH + r - limit
+						if s.y > 0 {
+							s.y = -s.y
+						}
 					}
 				}
-			case 1: // top
-				{
-					p.y = -r + limit
-					if s.y < 0 {
-						s.x = -s.x
-					}
-				}
-			case 2: // right
-				{
-					p.x = g.gW + r - limit
-					if s.x > 0 {
-						s.x = -s.x
-					}
-				}
-			case 3: // down
-				{
-					p.y = g.gH + r - limit
-					if s.y > 0 {
-						s.y = -s.y
-					}
-				}
+			} else {
+				g.deleteRock(i)
 			}
-
 		}
 	}
 }
@@ -129,10 +133,10 @@ func (g *game) process_missile_hits() {
 						if g.rocksNo < maxRocks {
 
 							g.rocks[g.rocksNo] = nr[i]
-							p := nr[i].m.pos
+							//							p := nr[i].m.pos
 							g.rocks[g.rocksNo].buildShape()
-							g.rocks[g.rocksNo].m.pos = p
-							g.rocks[g.rocksNo].m.speed = g.rocks[r].m.speed
+							//							g.rocks[g.rocksNo].m.pos = p
+
 							g.rocksNo++
 
 						}
