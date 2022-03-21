@@ -124,8 +124,9 @@ func (g *game) process_missile_hits() {
 			rp := g.rocks[r].m.pos
 
 			dist2 := rp.Sub(mp).Len2()
-			if dist2 < squared(g.rocks[r].radius+mr) {
-
+			if dist2 < squared(g.rocks[r].radius+mr) { // hit
+				g.addParticle(newExplosion(g.missiles[m].m.pos, g.missiles[m].m.speed, 30, 0.5))
+				g.addParticle(newSparks(g.missiles[m].m.pos, g.missiles[m].m.speed, 100, 2.0))
 				nr := g.rocks[r].split(g.missiles[m].m.pos, g.missiles[m].m.speed, 6)
 				for i := 0; i < len(nr); i++ {
 

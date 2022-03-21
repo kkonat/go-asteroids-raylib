@@ -1,30 +1,33 @@
 package main
 
 import (
-	"fmt"
 	"time"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
 const (
-	caption      = "test bum bum game"
-	rSpeedMax    = 1
+	caption        = "test bum bum game"
+	rSpeedMax      = 1
 	preferredRocks = 12
-	maxRocks     = 100
-	maxMissiles  = 50
+	maxRocks       = 100
+	maxMissiles    = 50
+	maxParticles   = 50
+	FPS            = 60
 )
 
 type game struct {
-	sm         *soundManager
-	sf         *starfield
-	ship       *ship
-	rocks      [maxRocks]*Rock
-	rocksNo    int
-	missiles   [maxMissiles]*missile
-	missilesNo int
-	sW, sH     int32
-	gW, gH     float64
+	sm          *soundManager
+	sf          *starfield
+	ship        *ship
+	rocks       [maxRocks]*Rock
+	rocksNo     int
+	missiles    [maxMissiles]*missile
+	missilesNo  int
+	particles   [maxParticles]particle
+	particlesNo int
+	sW, sH      int32
+	gW, gH      float64
 }
 
 var tnow, tprev int64
@@ -72,8 +75,32 @@ func (g *game) prepareDisplay() {
 	rl.InitWindow(g.sW, g.sH, caption)
 	rl.MaximizeWindow()
 
-	rl.SetTargetFPS(60)
+	rl.SetTargetFPS(FPS)
 
+}
+
+func (gme *game) addParticle(p particle) {
+	if gme.particlesNo < maxParticles {
+		gme.particles[gme.particlesNo] = p
+		gme.particlesNo++
+	}
+}
+func (gme *game) animateParticles() {
+	for i := 0; i < gme.particlesNo; i++ {
+		gme.particles[i].Animate()
+		if gme.particles[i].canDelete() {
+			gme.particlesNo--
+
+			gme.particles[i] = gme.particles[gme.particlesNo]
+			gme.particles[gme.particlesNo] = nil
+
+		}
+	}
+}
+func (gme *game) drawParticles() {
+	for i := 0; i < gme.particlesNo; i++ {
+		gme.particles[i].Draw()
+	}
 }
 func (gme *game) moveRocks(dt float64) {
 
@@ -108,7 +135,7 @@ func (gme *game) drawAndUpdate() {
 		gme.missiles[i].Draw()
 
 	}
-
+	gme.drawParticles()
 	gme.ship.Draw() // draw ship
 
 	gme.drawStatusBar() // draw status bar on top of everything
@@ -120,7 +147,6 @@ func (gme *game) drawAndUpdate() {
 	elapsed := tnow - tprev
 	tprev = tnow
 	dt := float64(elapsed) / 16666.0
-	fmt.Println(dt)
 	gme.ship.m.Move(dt)
 	gme.moveRocks(dt)
 	gme.moveMissiles(dt)
@@ -128,6 +154,7 @@ func (gme *game) drawAndUpdate() {
 	gme.constrainShip()
 	gme.constrainRocks()
 	gme.constrainMissiles()
+	gme.animateParticles()
 	//	gme.animatestuff()
 
 }

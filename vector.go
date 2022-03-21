@@ -49,6 +49,10 @@ func (a V2) Sub(b V2) V2 { return V2{a.x - b.x, a.y - b.y} }
 
 func (a V2) DivA(b float64) V2 { return V2{a.x / b, a.y / b} }
 
+func rotV(angle float64) V2 {
+	rad := angle * math.Pi / 180.
+	return V2{math.Sin(rad), math.Cos(rad)}
+}
 func (v V2) Norm() V2 {
 	return v.DivA(v.Len())
 }

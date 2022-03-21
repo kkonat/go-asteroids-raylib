@@ -83,5 +83,4 @@ func main() {
 
 	}
 	game.finalize()
-
 }
