@@ -2,14 +2,18 @@ package main
 
 import (
 	"math/rand"
-	"runtime"
 	"time"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
 func main() {
-	runtime.GOMAXPROCS(4)
+	// By default, Go programs run with GOMAXPROCS set to the number
+	// of cores available; in prior releases it defaulted to 1.
+	// Starting from Go 1.5, the default value is the number of cores.
+	// You only need to explicitly set it if you are not okay with this
+	// in newer Go versions.
+	//runtime.GOMAXPROCS(8)
 	rand.Seed(time.Now().UnixNano())
 	game := newGame(1440, 720)
 	rl.DisableCursor()
@@ -66,6 +70,7 @@ func main() {
 		if rl.IsKeyPressed(rl.KeyLeftControl) { // fire
 			if game.missilesNo < maxMissiles {
 				launchMissile(game)
+				game.sm.playM(game.sm.sLaunch)
 			}
 
 		}
@@ -74,6 +79,7 @@ func main() {
 		}
 
 		game.drawAndUpdate()
+
 		dx, dy := rl.GetMouseDelta().X, rl.GetMouseDelta().X
 
 		if !cursorEnabled && dx*dx+dy*dy > 16 {

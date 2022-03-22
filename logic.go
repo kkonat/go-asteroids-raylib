@@ -2,6 +2,7 @@ package main
 
 import (
 	"math/rand"
+	"sync"
 )
 
 func (g *game) constrainShip() {
@@ -30,6 +31,7 @@ func (g *game) constrainShip() {
 
 	}
 }
+
 func (g *game) constrainRocks() {
 	const limit = -50 // ordinate to detect rock going off screen / respawn new one
 
@@ -39,9 +41,8 @@ func (g *game) constrainRocks() {
 			(g.rocks[i].m.pos.x-g.rocks[i].radius > g.gW-limit && g.rocks[i].m.speed.x > 0) ||
 			(g.rocks[i].m.pos.y+g.rocks[i].radius < limit && g.rocks[i].m.speed.y < 0) ||
 			(g.rocks[i].m.pos.y-g.rocks[i].radius > g.gH-limit && g.rocks[i].m.speed.y > 0) {
-
+			mutex.Lock()
 			if g.rocksNo < preferredRocks {
-
 				// respawn rock in a new sector, first randomly on the screen
 				g.rocks[i].randomize()
 				g.rocks[i].m.speed = V2{rnd()*rSpeedMax - rSpeedMax/2, rnd()*rSpeedMax - rSpeedMax/2}
@@ -86,6 +87,7 @@ func (g *game) constrainRocks() {
 			} else {
 				g.deleteRock(i)
 			}
+			mutex.Unlock()
 		}
 	}
 }
@@ -97,7 +99,9 @@ func (g *game) constrainMissiles() {
 		p := g.missiles[i].m.pos
 		if p.x <= limit || p.x > g.gW-limit ||
 			p.y <= limit || p.y > g.gH-limit {
+			mutex.Lock()
 			g.deleteMissile(i)
+			mutex.Unlock()
 			continue
 		}
 		i++
@@ -115,37 +119,38 @@ func (g *game) deleteRock(r int) {
 	g.rocks[g.rocksNo] = nil
 }
 
+var mutex sync.Mutex
+
 func (g *game) process_missile_hits() {
 	const mr = 10 // missile radius
 	for r := 0; r < g.rocksNo; r++ {
 		for m := 0; m < g.missilesNo; m++ {
-
 			mp := g.missiles[m].m.pos
 			rp := g.rocks[r].m.pos
-
 			dist2 := rp.Sub(mp).Len2()
 			if dist2 < squared(g.rocks[r].radius+mr) { // hit
+				// explosion vFX
 				g.addParticle(newExplosion(g.missiles[m].m.pos, g.missiles[m].m.speed, 30, 0.5))
 				g.addParticle(newSparks(g.missiles[m].m.pos, g.missiles[m].m.speed, 100, 2.0))
-				nr := g.rocks[r].split(g.missiles[m].m.pos, g.missiles[m].m.speed, 6)
-				for i := 0; i < len(nr); i++ {
 
+				// sound
+				g.sm.playPM(g.sm.sExpl, 0.5+rnd32())
+
+				// split rock
+				nr := g.rocks[r].split(g.missiles[m].m.pos, g.missiles[m].m.speed, 6)
+
+				// copy new rocks
+				for i := 0; i < len(nr); i++ {
 					if nr[i].radius > 8 {
 						if g.rocksNo < maxRocks {
-
 							g.rocks[g.rocksNo] = nr[i]
-							//							p := nr[i].m.pos
 							g.rocks[g.rocksNo].buildShape()
-							//							g.rocks[g.rocksNo].m.pos = p
-
 							g.rocksNo++
-
 						}
 					}
 				}
 				g.deleteRock(r)
 				g.deleteMissile(m)
-
 				break
 			}
 		}

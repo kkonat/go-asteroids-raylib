@@ -42,6 +42,7 @@ func (s *ship) Draw() {
 		4.1, rl.Orange)
 
 	s.m.speed = V2MulA(s.m.speed, 0.9975)
+	s.m.rotSpeed *= 0.97
 
 }
 func (s *ship) thrust(fuelCons float64) {

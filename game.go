@@ -1,6 +1,7 @@
 package main
 
 import (
+	"sync"
 	"time"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -103,22 +104,20 @@ func (gme *game) drawParticles() {
 	}
 }
 func (gme *game) moveRocks(dt float64) {
-
 	for i := 0; i < gme.rocksNo; i++ { // move rocks
-		gme.rocks[i].m.Move(dt)
+		go gme.rocks[i].m.Move(dt)
 	}
+	wg.Done()
 }
 func (gme *game) moveMissiles(dt float64) {
-
-	for i := 0; i < gme.rocksNo; i++ { // move rocks
-		gme.rocks[i].m.Move(dt)
-	}
-
 	for i := 0; i < gme.missilesNo; i++ { // move missiles
-		gme.missiles[i].m.Move(dt)
-
+		go gme.missiles[i].m.Move(dt)
 	}
+	wg.Done()
 }
+
+var wg sync.WaitGroup
+
 func (gme *game) drawAndUpdate() {
 
 	rl.BeginDrawing()
@@ -147,14 +146,19 @@ func (gme *game) drawAndUpdate() {
 	elapsed := tnow - tprev
 	tprev = tnow
 	dt := float64(elapsed) / 16666.0
+
 	gme.ship.m.Move(dt)
+	wg.Add(1)
 	gme.moveRocks(dt)
+	wg.Add(1)
 	gme.moveMissiles(dt)
+
+	wg.Wait()
 	gme.process_missile_hits()
 	gme.constrainShip()
-	gme.constrainRocks()
-	gme.constrainMissiles()
-	gme.animateParticles()
+	go gme.constrainRocks()
+	go gme.constrainMissiles()
+	go gme.animateParticles()
 	//	gme.animatestuff()
 
 }

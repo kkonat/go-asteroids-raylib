@@ -11,9 +11,9 @@ type motion struct {
 }
 
 func (m *motion) Move(dt float64) {
-	dv := V2MulA(m.speed,dt)
+	dv := V2MulA(m.speed, dt)
 	m.pos.Incr(dv)
-	m.rot += m.rotSpeed*dt
+	m.rot += m.rotSpeed * dt
 	m.rotM = newM22rot(m.rot)
 }
 
