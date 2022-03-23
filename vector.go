@@ -44,8 +44,9 @@ func (v1 V2) Mul(v2 V2) V2 { return V2{v1.x * v2.x, v1.y * v2.y} }
 func V2Add(a, b V2) V2   { return V2{a.x + b.x, a.y + b.y} }
 func (a V2) Add(b V2) V2 { return V2{a.x + b.x, a.y + b.y} }
 
-func V2Sub(a, b V2) V2   { return V2{a.x - b.x, a.y - b.y} }
-func (a V2) Sub(b V2) V2 { return V2{a.x - b.x, a.y - b.y} }
+func V2Sub(a, b V2) V2         { return V2{a.x - b.x, a.y - b.y} }
+func (a V2) Sub(b V2) V2       { return V2{a.x - b.x, a.y - b.y} }
+func (a V2) SubA(b float64) V2 { return V2{a.x - b, a.y - b} }
 
 func (a V2) DivA(b float64) V2 { return V2{a.x / b, a.y / b} }
 

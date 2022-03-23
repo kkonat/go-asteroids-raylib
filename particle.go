@@ -13,11 +13,11 @@ type particle interface {
 }
 
 type sparks struct {
-	timer, timerMax   int
-	positions, speeds []V2
-	lives, maxlives   []int
-	life              int
-	sparksNo          int
+	timer, timerMax        int
+	positions, speeds      []V2
+	lives, maxlives, seeds []uint8
+	life                   int
+	sparksNo               int
 }
 
 func newSparks(pos, mspeed V2, maxradius, duration float64) *sparks {
@@ -26,8 +26,9 @@ func newSparks(pos, mspeed V2, maxradius, duration float64) *sparks {
 	speed := 0.5 + rnd()*1.5
 	s.positions = make([]V2, s.sparksNo)
 	s.speeds = make([]V2, s.sparksNo)
-	s.lives = make([]int, s.sparksNo)
-	s.maxlives = make([]int, s.sparksNo)
+	s.lives = make([]uint8, s.sparksNo)
+	s.maxlives = make([]uint8, s.sparksNo)
+	s.seeds = make([]uint8, s.sparksNo)
 
 	angle := 0.0
 	frames := int(duration * FPS)
@@ -37,7 +38,8 @@ func newSparks(pos, mspeed V2, maxradius, duration float64) *sparks {
 		angle += (360 / float64(s.sparksNo)) + rndSym(15)
 		s.positions[i] = pos
 		s.speeds[i] = mspeed.Add(rotV(angle).MulA(5 * speed * (0.5 + rnd())))
-		s.maxlives[i] = frames/2 + rand.Intn(frames/2)
+		s.maxlives[i] = uint8(frames/2 + rand.Intn(frames/2))
+		s.seeds[i] = uint8(rand.Intn(256))
 	}
 
 	return s
@@ -53,7 +55,9 @@ func (s *sparks) canDelete() bool {
 
 func (s *sparks) Animate() {
 	for i := 0; i < s.sparksNo; i++ {
-		s.positions[i] = s.positions[i].Add(s.speeds[i])
+		age := float64(s.lives[i]) / 10
+		disturb := _noise2D(int(s.lives[i] + s.seeds[i])).MulA(age).SubA(age / 2)
+		s.positions[i] = s.positions[i].Add(s.speeds[i].Add(disturb))
 		s.speeds[i] = s.speeds[i].MulA(0.996)
 		if s.lives[i] < s.maxlives[i] {
 			s.lives[i]++

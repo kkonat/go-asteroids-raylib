@@ -15,6 +15,7 @@ func main() {
 	// in newer Go versions.
 	//runtime.GOMAXPROCS(8)
 	rand.Seed(time.Now().UnixNano())
+	_initNoise()
 	game := newGame(1440, 720)
 	rl.DisableCursor()
 	cursorEnabled := false
