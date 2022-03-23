@@ -1,16 +1,14 @@
-a simple space shooter game
+#Boom Boom
+A simple space shooter game, kind of asteroids clone, but gonna  add some aliens...<br>
+I wrote this to try out my skills in go. Uses a simple graphics lib (**raylib**) some go concurrency
 
-using raylib 
+_Controls:_
+- [**A**] - Turn left
+- [**S**], [**W**] - small thrust, more thrust
+- [**D**] - Turn right
+- [**Ctrl**] - Shoot a missile
+- [**M**] - Mute/Unmute sounds
 
-Trying out my skills in go with some concurrency
+Runs in a 1440 x 720 window. Keeps around 60 fps on Ryzen 7 (8core) with RX 480 gpu.
 
-Controls:
-[A] - Left
-
-[S],[W] - Thrust
-
-[D] - Right
-
-[Ctrl] - Shoot
-
-[M] - Mute/Unmute sounds
+![screenshot](screen.png)
