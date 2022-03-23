@@ -4,7 +4,33 @@ import (
 	"math/rand"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
+	ns "github.com/ojrac/opensimplex-go"
 )
+
+var nTab [256]V2
+
+func _initNoise() {
+	const scaleDown = 10.0
+	const blendRange = 32
+
+	n := ns.NewNormalized(rand.Int63())
+	for i := 0; i < 256; i++ {
+		nTab[i] = V2{n.Eval2(float64(i)/scaleDown, 0), n.Eval2(float64(i)/scaleDown, 1)}
+	}
+
+	for i, j := 256-blendRange, 0; j < blendRange; i, j = i+1, j+1 {
+		t := float64(j / blendRange)
+		nTab[i] = V2{nTab[i].x*t + nTab[j].x*(1-t), nTab[i].y*t + nTab[j].y*(1-t)}
+		j++
+	}
+	return
+}
+func _noise1D(index int) float64 {
+	return nTab[index%256].x
+}
+func _noise2D(index int) V2 {
+	return nTab[index%256]
+}
 
 func _line(p1, p2 V2, col rl.Color) {
 	rl.DrawLine(int32(p1.x), int32(p1.y), int32(p2.x), int32(p2.y), col)
@@ -27,7 +53,7 @@ func _square(p1 V2, d int32, col rl.Color) {
 func lerp(t float32, a, b uint8) uint8 {
 	return uint8(float32(a)*t + float32(b)*(1.0-t))
 }
-func _colorBlend(t0, maxt int, col1, col2 rl.Color) rl.Color {
+func _colorBlend(t0, maxt uint8, col1, col2 rl.Color) rl.Color {
 	t := float32(t0) / float32(maxt)
 	return rl.Color{lerp(t, col1.R, col2.R),
 		lerp(t, col1.G, col2.G),
