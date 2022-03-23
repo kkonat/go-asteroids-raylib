@@ -15,3 +15,4 @@ Runs in a 1440 x 720 window. Keeps around 60 fps on Ryzen 7 (8core) with RX 480 
 
 ---
 ![screenshot](/imgs/screen1.png)
+<img src="https://github.com/kkonat/rl-bb/blob/master/imgs/Screen1.png?raw=true">
