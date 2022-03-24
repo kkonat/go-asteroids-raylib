@@ -25,15 +25,18 @@ func _initNoise() {
 	}
 	return
 }
-func _noise1D(index int) float64 {
-	return nTab[index%256].x
+func _noise1D(index uint8) float64 {
+	return nTab[index].x
 }
-func _noise2D(index int) V2 {
-	return nTab[index%256]
+func _noise2D(index uint8) V2 {
+	return nTab[index]
 }
 
 func _line(p1, p2 V2, col rl.Color) {
 	rl.DrawLine(int32(p1.x), int32(p1.y), int32(p2.x), int32(p2.y), col)
+}
+func _lineThick(p1, p2 V2, thickness float32, col rl.Color) {
+	rl.DrawLineEx(rl.Vector2{X: float32(p1.x), Y: float32(p1.y)}, rl.Vector2{X: float32(p2.x), Y: float32(p2.y)}, thickness, col)
 }
 func _circle(p1 V2, r float64, col rl.Color) {
 	rl.DrawCircleLines(int32(p1.x), int32(p1.y), float32(r), col)
@@ -59,7 +62,13 @@ func _colorBlend(t0, maxt uint8, col1, col2 rl.Color) rl.Color {
 		lerp(t, col1.G, col2.G),
 		lerp(t, col1.B, col2.B),
 		lerp(t, col1.A, col2.A)}
-
+}
+func _colorBlendA(t0 float64, col1, col2 rl.Color) rl.Color {
+	t := float32(t0)
+	return rl.Color{lerp(t, col1.R, col2.R),
+		lerp(t, col1.G, col2.G),
+		lerp(t, col1.B, col2.B),
+		lerp(t, col1.A, col2.A)}
 }
 func rlV2(p V2) rl.Vector2 {
 	return rl.Vector2{X: float32(p.x), Y: float32(p.y)}

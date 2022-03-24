@@ -56,9 +56,10 @@ func (s *sparks) canDelete() bool {
 func (s *sparks) Animate() {
 	for i := 0; i < s.sparksNo; i++ {
 		age := float64(s.lives[i]) / 10
-		disturb := _noise2D(int(s.lives[i] + s.seeds[i])).MulA(age).SubA(age / 2)
-		s.positions[i] = s.positions[i].Add(s.speeds[i].Add(disturb))
+		disturb := _noise2D(s.lives[i] + s.seeds[i]).MulA(age).SubA(age / 2)
+
 		s.speeds[i] = s.speeds[i].MulA(0.996)
+		s.positions[i] = s.positions[i].Add(s.speeds[i].Add(disturb))
 		if s.lives[i] < s.maxlives[i] {
 			s.lives[i]++
 		}
