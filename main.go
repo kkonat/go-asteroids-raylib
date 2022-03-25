@@ -19,6 +19,7 @@ func main() {
 	game := newGame(1440, 720)
 	rl.DisableCursor()
 	cursorEnabled := false
+	loadTexture( "res/ufo1.png")
 
 	for !rl.WindowShouldClose() {
 		if !game.sm.isPlaying(0) {
@@ -80,7 +81,7 @@ func main() {
 		}
 
 		game.drawAndUpdate()
-
+		//printMemoryUsage()
 		dx, dy := rl.GetMouseDelta().X, rl.GetMouseDelta().X
 
 		if !cursorEnabled && dx*dx+dy*dy > 16 {

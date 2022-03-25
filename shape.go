@@ -36,13 +36,12 @@ func newShape(p []V2) *shape {
 func (s *shape) Draw(m *motion, colFill, colLine rl.Color) {
 	var veryfirst, pp V2
 
-	for i := 0; i < len(s.points); i++ {
-		np := M22pMulV(&m.rotM, s.points[i])
+	for i, p := range s.points {
+		np := m.rotM.pMulV(p)
 		np.Incr(m.pos)
 
 		if i > 0 {
-			// sequence of vertices matters must be counter clockwise, otherwise nothing is drawn
-			_triangle(np, pp, m.pos, colFill)
+			_triangle(np, pp, m.pos, colFill) // sequence of vertices matters must be counter clockwise, otherwise nothing is drawn
 			_line(pp, np, colLine)
 		} else {
 			veryfirst = np

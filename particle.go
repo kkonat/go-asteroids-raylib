@@ -14,7 +14,7 @@ type particle interface {
 
 type sparks struct {
 	timer, timerMax        int
-	positions, speeds      []V2
+	positions, speeds      []V2int
 	lives, maxlives, seeds []uint8
 	life                   int
 	sparksNo               int
@@ -22,10 +22,10 @@ type sparks struct {
 
 func newSparks(pos, mspeed V2, maxradius, duration float64) *sparks {
 	s := new(sparks)
-	s.sparksNo = 50 + rand.Intn(20)
+	s.sparksNo = 100 + rand.Intn(40)
 	speed := 0.5 + rnd()*1.5
-	s.positions = make([]V2, s.sparksNo)
-	s.speeds = make([]V2, s.sparksNo)
+	s.positions = make([]V2int, s.sparksNo)
+	s.speeds = make([]V2int, s.sparksNo)
 	s.lives = make([]uint8, s.sparksNo)
 	s.maxlives = make([]uint8, s.sparksNo)
 	s.seeds = make([]uint8, s.sparksNo)
@@ -36,8 +36,9 @@ func newSparks(pos, mspeed V2, maxradius, duration float64) *sparks {
 	s.life = frames
 	for i := 0; i < s.sparksNo; i++ {
 		angle += (360 / float64(s.sparksNo)) + rndSym(15)
-		s.positions[i] = pos
-		s.speeds[i] = mspeed.Add(rotV(angle).MulA(5 * speed * (0.5 + rnd())))
+		s.positions[i] = pos.ToV2int()
+		sp := mspeed.Add(rotV(angle).MulA(5 * speed * (0.5 + rnd())))
+		s.speeds[i] = sp.ToV2int()
 		s.maxlives[i] = uint8(frames/2 + rand.Intn(frames/2))
 		s.seeds[i] = uint8(rand.Intn(256))
 	}
@@ -53,12 +54,14 @@ func (s *sparks) canDelete() bool {
 	}
 }
 
+const damp = 255 // (1<<8) * 0.996
+
 func (s *sparks) Animate() {
 	for i := 0; i < s.sparksNo; i++ {
 		age := float64(s.lives[i]) / 10
-		disturb := _noise2D(s.lives[i] + s.seeds[i]).MulA(age).SubA(age / 2)
+		disturb := _noise2D(s.lives[i] + s.seeds[i]).MulA(age).SubA(age / 2).ToV2int()
 
-		s.speeds[i] = s.speeds[i].MulA(0.996)
+		s.speeds[i] = s.speeds[i].MulA(damp)
 		s.positions[i] = s.positions[i].Add(s.speeds[i].Add(disturb))
 		if s.lives[i] < s.maxlives[i] {
 			s.lives[i]++
@@ -74,15 +77,13 @@ func (s *sparks) Draw() {
 		if s.lives[i] < s.maxlives[i] {
 			if s.lives[i] < s.maxlives[i]/3 {
 				c := _colorBlend(s.lives[i], s.maxlives[i]/3, rl.Orange, rl.Red)
-				_square(s.positions[i], 2, c)
+				_squareV2int(s.positions[i], 2, c)
 			} else {
 				t := float32(s.lives[i]-s.maxlives[i]/3) / (float32(s.maxlives[i] / 3 * 2))
 				v := float32(rand.Intn(2))
 				c := rl.ColorFromHSV(t*33, 1.0, v)
 
-				//_square(s.positions[i], 2, rl.ColorAlpha(c, 1-t))
-				_square(s.positions[i], 2, c)
-
+				_squareV2int(s.positions[i], 2, c) // I assume this is  faster than circle
 			}
 		}
 	}

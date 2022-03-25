@@ -53,6 +53,9 @@ func _triangle(p1, p2, p3 V2, col rl.Color) {
 func _square(p1 V2, d int32, col rl.Color) {
 	rl.DrawRectangle(int32(p1.x), int32(p1.y), d, d, col)
 }
+func _squareV2int(p1 V2int, d int32, col rl.Color) {
+	rl.DrawRectangle(p1.x>>V2intShift, p1.y>>V2intShift, d, d, col)
+}
 func lerp(t float32, a, b uint8) uint8 {
 	return uint8(float32(a)*t + float32(b)*(1.0-t))
 }

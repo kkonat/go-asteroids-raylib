@@ -32,23 +32,24 @@ func newShip(posX, posY, mass, fuel float64) *ship {
 }
 func (s *ship) Draw() {
 
+	// draw ship
 	s.shape.Draw(s.m, rl.DarkGray, s.col)
 
-	// draw thruster
+	// draw flame
 	disturb := _noise2D(s.cycle * 4).MulA(6).SubA(3)
 	p1 := s.m.pos.Sub(s.thr.Norm().MulA(16))
 	p2 := p1.Sub(s.thr.MulA(200)).Add(disturb)
-	// _lineThick(V2{s.m.pos.x - s.thr.x*200, s.m.pos.y - s.thr.y*200},
-	// V2{s.m.pos.x - s.thr.x*400, s.m.pos.y - s.thr.y*400},
-	// 4.1, rl.Orange)
+
 	n := _noise1D(s.cycle)
-	c := _colorBlendA(n, rl.Yellow, rl.Orange)
+	c := _colorBlendA(n, rl.Yellow, rl.Red)
 	_lineThick(p1, p2, 4.1, c)
 
+	// animate
 	s.m.speed = V2MulA(s.m.speed, 0.9975)
 	s.m.rotSpeed *= 0.97
-	s.cycle++
 
+	// animate noise
+	s.cycle++
 }
 func (s *ship) thrust(fuelCons float64) {
 

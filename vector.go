@@ -1,6 +1,10 @@
 package main
 
-import "math"
+import (
+	"math"
+
+	rl "github.com/gen2brain/raylib-go/raylib"
+)
 
 type M22 struct {
 	a00, a01, a10, a11 float64
@@ -10,8 +14,28 @@ func (m *M22) Mul(v V2) V2 {
 	return M22MulV(*m, v)
 }
 
+const V2intShift = 8
+
+func FromFloat(a float64) int32 {
+	return int32(float64(1<<V2intShift) * a)
+}
+
+type V2int struct {
+	x, y int32
+}
+
 type V2 struct {
 	x, y float64
+}
+
+func (v V2) ToV2int() V2int {
+	return V2int{FromFloat(v.x), FromFloat(v.y)}
+}
+func (v V2int) MulA(a int32) V2int {
+	return V2int{(v.x * a) >> V2intShift, (v.y * a) >> V2intShift}
+}
+func (v1 V2int) Add(v2 V2int) V2int {
+	return V2int{v1.x + v2.x, v1.y + v2.y}
 }
 
 func (v1 *V2) Incr(v2 V2) {
@@ -51,7 +75,7 @@ func (a V2) SubA(b float64) V2 { return V2{a.x - b, a.y - b} }
 func (a V2) DivA(b float64) V2 { return V2{a.x / b, a.y / b} }
 
 func rotV(angle float64) V2 {
-	rad := angle * math.Pi / 180.
+	rad := angle * rl.Deg2rad
 	return V2{math.Sin(rad), math.Cos(rad)}
 }
 func (v V2) Norm() V2 {
@@ -65,6 +89,12 @@ func M22MulV(m M22, v V2) V2 { // matrix x vector multiplication
 	return r
 }
 func M22pMulV(m *M22, v V2) V2 { // matrix x vector multiplication
+	var r V2
+	r.x = m.a00*v.x + m.a01*v.y
+	r.y = m.a10*v.x + m.a11*v.y
+	return r
+}
+func (m *M22) pMulV(v V2) V2 {
 	var r V2
 	r.x = m.a00*v.x + m.a01*v.y
 	r.y = m.a10*v.x + m.a11*v.y
@@ -85,12 +115,12 @@ func V2len2(v V2) float64 { // Vector length squared
 
 func newM22rot(alpha float64) M22 {
 	var m M22
-	rad := float64(alpha * math.Pi / 180.0)
+	rad := float64(alpha * rl.Deg2rad)
 	m.a00, m.a01 = math.Cos(rad), -math.Sin(rad)
 	m.a10, m.a11 = math.Sin(rad), math.Cos(rad)
 	return m
 }
 func cs(alpha float64) V2 {
-	rad := alpha * math.Pi / 180.0
+	rad := alpha * rl.Deg2rad
 	return V2{-math.Sin(rad), math.Cos(rad)}
 }
