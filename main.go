@@ -14,21 +14,24 @@ func main() {
 	// You only need to explicitly set it if you are not okay with this
 	// in newer Go versions.
 	//runtime.GOMAXPROCS(8)
+
+	rl.SetTraceLog(rl.LogAll)
+
 	rand.Seed(time.Now().UnixNano())
 	_initNoise()
 	game := newGame(1440, 720)
 	rl.DisableCursor()
 	cursorEnabled := false
-	loadTexture( "res/ufo1.png")
 
 	for !rl.WindowShouldClose() {
+
 		if !game.sm.isPlaying(0) {
-			game.sm.play(game.sm.sSpace)
+			game.sm.play(sSpace)
 			//			fmt.Println("start backg sound")
 		}
 
 		if rl.IsKeyPressed('Q') {
-			game.sm.playM(game.sm.sOinx)
+			game.sm.playM(sOinx)
 			game.ship.m.speed = V2{0, 0}
 			game.ship.m.pos = V2{720, 360}
 		}
@@ -43,7 +46,7 @@ func main() {
 			game.ship.rotate(-.2)
 		}
 		if rl.IsKeyPressed('S') { // small thrust
-			game.sm.play(game.sm.sThrust)
+			game.sm.play(sThrust)
 			game.ship.isSliding = false
 		}
 		if rl.IsKeyDown('S') {
@@ -52,10 +55,10 @@ func main() {
 		if rl.IsKeyReleased('S') { // -----
 			game.ship.thrust(0)
 			game.ship.isSliding = true
-			game.sm.stop(game.sm.sThrust)
+			game.sm.stop(sThrust)
 		}
 		if rl.IsKeyPressed('W') { // big thrust
-			game.sm.play(game.sm.sThrust)
+			game.sm.play(sThrust)
 			game.ship.isSliding = false
 		}
 		if rl.IsKeyDown('W') {
@@ -64,7 +67,7 @@ func main() {
 		if rl.IsKeyReleased('W') { // -----
 			game.ship.thrust(0)
 			game.ship.isSliding = true
-			game.sm.stop(game.sm.sThrust)
+			game.sm.stop(sThrust)
 		}
 		if rl.IsKeyDown('D') { // rotate right
 			game.ship.rotate(.2)
@@ -72,7 +75,7 @@ func main() {
 		if rl.IsKeyPressed(rl.KeyLeftControl) { // fire
 			if game.missilesNo < maxMissiles {
 				launchMissile(game)
-				game.sm.playM(game.sm.sLaunch)
+				game.sm.playM(sLaunch)
 			}
 
 		}

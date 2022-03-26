@@ -19,6 +19,7 @@ const (
 
 type game struct {
 	sm          *soundManager
+	sprm        *spriteManager
 	sf          *starfield
 	ship        *ship
 	rocks       [maxRocks]*Rock
@@ -29,6 +30,7 @@ type game struct {
 	particlesNo int
 	sW, sH      int32
 	gW, gH      float64
+	ufo         rl.Texture2D
 }
 
 var tnow, tprev int64
@@ -36,6 +38,13 @@ var tnow, tprev int64
 func newGame(w, h int32) *game {
 
 	const safeCircle = 200
+
+	rl.SetConfigFlags(rl.FlagMsaa4xHint | rl.FlagVsyncHint | rl.FlagWindowMaximized)
+
+	rl.InitWindow(w, h, caption)
+	rl.MaximizeWindow()
+
+	rl.SetTargetFPS(FPS)
 
 	g := new(game)
 	g.sW, g.sH = w, h
@@ -45,8 +54,10 @@ func newGame(w, h int32) *game {
 
 	g.sf = newStarfield(w, h)
 	g.sm = newSoundManager(true)
-	g.ship = newShip(cX, cY, 1000, 1000)
+	g.sprm = newSpriteManager()
 
+	g.ship = newShip(cX, cY, 1000, 1000)
+	
 	i := 0
 	for i < preferredRocks { // ( cx +r )  ( nr.x +nr.r)
 		nr := newRockRandom(g)
@@ -58,25 +69,30 @@ func newGame(w, h int32) *game {
 	}
 	g.rocksNo = i
 
-	g.prepareDisplay()
-	tnow = time.Now().Local().UnixMicro()
+	tprev = time.Now().Local().UnixMicro()
 	return g
 }
+
+var x uint8
+var a float32
 
 func (g *game) drawStatusBar() {
 
 	rl.DrawRectangle(0, g.sH-20, g.sW, 26, rl.DarkPurple)
 	rl.DrawText(caption, 20, g.sH-20, 20, rl.Magenta)
 	rl.DrawFPS(g.sW-80, g.sH-20)
+
+	//rl.DrawTexture(g.ufo, 720, 30, rl.White)
+	a += 1
+	x = x + 1
+
+	g.sprm.drawSprite(sprAlien0, (x/4)%8, 720, 130, 1.0, 0.0)
+
+	// rl.DrawTexturePro(g.ufo, rl.NewRectangle(float32((x/4)%8*32), 0, 32, 32), rl.NewRectangle(720+float32(_noise2D(x).x*20), 130+float32(_noise2D(x).y*20), 32, 32),
+	// 	rl.Vector2{16, 16}, float32(math.Sin(float64(a*rl.Deg2rad))), rl.White)
 }
 
 func (g *game) prepareDisplay() {
-
-	rl.SetConfigFlags(rl.FlagMsaa4xHint | rl.FlagVsyncHint | rl.FlagWindowMaximized)
-	rl.InitWindow(g.sW, g.sH, caption)
-	rl.MaximizeWindow()
-
-	rl.SetTargetFPS(FPS)
 
 }
 
@@ -166,4 +182,5 @@ func (gme *game) drawAndUpdate() {
 func (g *game) finalize() {
 	rl.CloseWindow()
 	g.sm.unloadAll()
+	g.sprm.unloadAll()
 }

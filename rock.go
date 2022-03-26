@@ -66,7 +66,7 @@ func (r *Rock) randomize() {
 }
 
 func (r *Rock) Draw() {
-	r.shape.Draw(r.m, rl.Black, rl.DarkGray)
+	r.shape.DrawThin(r.m, rl.Black, rl.DarkGray, 0.75)
 }
 
 func touches(which int, allRocks []*Rock) (bool, int) {

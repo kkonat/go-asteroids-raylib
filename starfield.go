@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"math/rand"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -13,8 +14,13 @@ type star struct {
 }
 
 type starfield struct {
-	stars []star
-	w, h  int32
+	stars       []star
+	w, h        int32
+	starfTex    rl.Texture2D
+	shader      rl.Shader
+	time        []float32
+	iResolution []float32
+	timeLoc     int32
 }
 
 const starsNo = 1000
@@ -31,26 +37,45 @@ func newStarfield(w, h int32) *starfield {
 		s.r = uint8(rand.Int31n(40) * 3)
 		sf.stars[i] = s
 	}
-
+	img := rl.LoadImage("res/Space.png")
+	rl.ImageCrop(img, rl.Rectangle{X: 0, Y: 0, Width: float32(w), Height: float32(h)})
+	sf.starfTex = rl.LoadTextureFromImage(img)
+	rl.UnloadImage(img)
+	sf.shader = rl.LoadShader("shaders/base.vs", "shaders/starfield.fs")
+	sf.time = make([]float32, 1)
+	sf.iResolution = make([]float32, 2)
+	sf.iResolution[0], sf.iResolution[1] = float32(sf.w), float32(sf.h)
+	sf.timeLoc = rl.GetShaderLocation(sf.shader, "time")
+	fmt.Println("sf.timeLoc =", sf.timeLoc)
+	rl.SetShaderValue(sf.shader, rl.GetShaderLocation(sf.shader, "iResolution"), sf.iResolution, rl.ShaderUniformVec2)
 	return sf
 }
 func (sf *starfield) draw() {
-	var x float32
-	c := rl.NewColor(0, 0, 0, 255)
-	rl.DrawCircleGradient(1655, 400, 500, rl.NewColor(60, 40, 210, 255), rl.Black)
+	// var x float32
+	// c := rl.NewColor(0, 0, 0, 255)
+
+	sf.time[0] += 0.01
+	rl.SetShaderValue(sf.shader, sf.timeLoc, sf.time, rl.ShaderUniformFloat)
+	rl.BeginShaderMode(sf.shader)
+	rl.DrawTexture(sf.starfTex, 0, 0, rl.White)
+
+	rl.EndShaderMode()
+
+	rl.DrawCircleGradient(1655, 400, 900, rl.NewColor(30, 20, 105, 255), rl.NewColor(0, 0, 0, 0))
 	rl.DrawCircleLines(1655, 400, 400, rl.NewColor(40, 10, 140, 255))
 	rl.DrawCircle(1655, 400, 400, rl.NewColor(20, 0, 70, 255))
 
-	for i, s := range sf.stars {
-		c.B = uint8(s.speed * 25)
-		c.R = s.r
+	// for i, s := range sf.stars {
+	// 	c.B = uint8(s.speed * 25)
+	// 	c.R = s.r
 
-		//rl.DrawPixel(int32(s.x), int32(s.y), c)
-		rl.DrawCircle(int32(s.x), int32(s.y), 1+float32(s.speed/3.0), c)
-		x = s.x + s.speed*0.2
-		if x > float32(sf.w) {
-			x -= float32(sf.w)
-		}
-		sf.stars[i].x = x
-	}
+	// 	//rl.DrawPixel(int32(s.x), int32(s.y), c)
+	// 	rl.DrawCircle(int32(s.x), int32(s.y), 1+float32(s.speed/3.0), c)
+	// 	x = s.x + s.speed*0.2
+	// 	if x > float32(sf.w) {
+	// 		x -= float32(sf.w)
+	// 	}
+	// 	sf.stars[i].x = x
+	// }
+
 }

@@ -134,7 +134,7 @@ func (g *game) process_missile_hits() {
 				g.addParticle(newSparks(g.missiles[m].m.pos, g.missiles[m].m.speed, 100, 2.0))
 
 				// sound
-				g.sm.playPM(g.sm.sExpl, 0.5+rnd32())
+				g.sm.playPM(sExpl, 0.5+rnd32())
 
 				// split rock
 				nr := g.rocks[r].split(g.missiles[m].m.pos, g.missiles[m].m.speed, 6)

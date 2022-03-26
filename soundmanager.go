@@ -5,29 +5,35 @@ import (
 )
 
 type soundManager struct {
-	sSpace, sOinx, sThrust int
-	sExpl, sLaunch         int
-	sounds                 []rl.Sound
-	volumes                []float32
-	maxvolumes             []float32
-	fadecount              []int32
-	fade                   bool
-	mute                   bool
+	sounds     []rl.Sound
+	volumes    []float32
+	maxvolumes []float32
+	fadecount  []int32
+	fade       bool
+	mute       bool
 }
+
+const (
+	sSpace = iota
+	sOinx
+	sThrust
+	sExpl
+	sLaunch
+)
 
 func newSoundManager(mute bool) *soundManager {
 	rl.InitAudioDevice()
 	sm := new(soundManager)
-	sm.sSpace = sm.loadSound("res/space.ogg", 0.5, 0.52)
-	sm.sOinx = sm.loadSound("res/oinxL.ogg", 0.7, 1.0)
-	sm.sThrust = sm.loadSound("res/thrust.ogg", 1.0, 1.0)
-	sm.sExpl = sm.loadSound("res/expl.ogg", 0.5, 0.65)
-	sm.sLaunch = sm.loadSound("res/launch.ogg", 0.5, 1.0)
+	sm.loadSound(sSpace, "res/space.ogg", 0.5, 0.52)
+	sm.loadSound(sOinx, "res/oinxL.ogg", 0.7, 1.0)
+	sm.loadSound(sThrust, "res/thrust.ogg", 1.0, 1.0)
+	sm.loadSound(sExpl, "res/expl.ogg", 0.5, 0.65)
+	sm.loadSound(sLaunch, "res/launch.ogg", 0.5, 1.0)
 	sm.mute = mute
 	return sm
 }
 
-func (sm *soundManager) loadSound(fname string, volume, pitch float32) int {
+func (sm *soundManager) loadSound(idx int, fname string, volume, pitch float32) {
 	snd := rl.LoadSound(fname)
 
 	rl.SetSoundPitch(snd, pitch)
@@ -36,7 +42,9 @@ func (sm *soundManager) loadSound(fname string, volume, pitch float32) int {
 	sm.volumes = append(sm.volumes, volume)
 	sm.maxvolumes = append(sm.maxvolumes, volume)
 	sm.fadecount = append(sm.fadecount, 0)
-	return len(sm.sounds) - 1
+	if idx != len(sm.sounds)-1 {
+		panic("soundmanager Id mismatch")
+	}
 }
 func (sm *soundManager) stop(idx int) {
 

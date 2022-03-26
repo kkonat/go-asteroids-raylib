@@ -52,3 +52,23 @@ func (s *shape) Draw(m *motion, colFill, colLine rl.Color) {
 	_triangle(veryfirst, pp, m.pos, colFill)
 	_line(pp, veryfirst, colLine)
 }
+
+func (s *shape) DrawThin(m *motion, colFill, colLine rl.Color, thickness float32) {
+	var veryfirst, pp V2
+
+	for i, p := range s.points {
+		np := m.rotM.pMulV(p)
+		np.Incr(m.pos)
+
+		if i > 0 {
+			_triangle(np, pp, m.pos, colFill) // sequence of vertices matters must be counter clockwise, otherwise nothing is drawn
+			_lineThick(pp, np, thickness, colLine)
+		} else {
+			veryfirst = np
+		}
+		pp = np
+	}
+
+	_triangle(veryfirst, pp, m.pos, colFill)
+	_lineThick(pp, veryfirst, thickness, colLine)
+}
