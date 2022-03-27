@@ -130,6 +130,8 @@ func (g *game) process_missile_hits() {
 			dist2 := rp.Sub(mp).Len2()
 			if dist2 < squared(g.rocks[r].radius+mr) { // hit
 				// explosion vFX
+				distBonus := g.ship.m.pos.Sub(g.rocks[r].m.pos).Len() / 200
+				g.ship.cash += 1 + int(100/g.rocks[r].radius*distBonus/3)
 				g.addParticle(newExplosion(g.missiles[m].m.pos, g.missiles[m].m.speed, 30, 0.5))
 				g.addParticle(newSparks(g.missiles[m].m.pos, g.missiles[m].m.speed, 100, 2.0))
 

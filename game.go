@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -57,7 +58,7 @@ func newGame(w, h int32) *game {
 	g.sprm = newSpriteManager()
 
 	g.ship = newShip(cX, cY, 1000, 1000)
-	
+
 	i := 0
 	for i < preferredRocks { // ( cx +r )  ( nr.x +nr.r)
 		nr := newRockRandom(g)
@@ -77,9 +78,9 @@ var x uint8
 var a float32
 
 func (g *game) drawStatusBar() {
-
+	status := fmt.Sprintf("$$$:%d Health:%d Fuel:%d Missiles:%d", g.ship.cash, int(g.ship.health), int(g.ship.fuel), g.ship.missiles)
 	rl.DrawRectangle(0, g.sH-20, g.sW, 26, rl.DarkPurple)
-	rl.DrawText(caption, 20, g.sH-20, 20, rl.Magenta)
+	rl.DrawText(status, 20, g.sH-20, 20, rl.Magenta)
 	rl.DrawFPS(g.sW-80, g.sH-20)
 
 	//rl.DrawTexture(g.ufo, 720, 30, rl.White)
@@ -90,10 +91,6 @@ func (g *game) drawStatusBar() {
 
 	// rl.DrawTexturePro(g.ufo, rl.NewRectangle(float32((x/4)%8*32), 0, 32, 32), rl.NewRectangle(720+float32(_noise2D(x).x*20), 130+float32(_noise2D(x).y*20), 32, 32),
 	// 	rl.Vector2{16, 16}, float32(math.Sin(float64(a*rl.Deg2rad))), rl.White)
-}
-
-func (g *game) prepareDisplay() {
-
 }
 
 func (gme *game) addParticle(p particle) {
@@ -164,14 +161,19 @@ func (gme *game) drawAndUpdate() {
 	dt := float64(elapsed) / 16666.0
 
 	gme.ship.m.Move(dt)
-	wg.Add(1)
+
+	gme.ship.chargeUp() // chargeup ship
+
+	wg.Add(1) // Waitgroup
 	gme.moveRocks(dt)
 	wg.Add(1)
 	gme.moveMissiles(dt)
 
 	wg.Wait()
+
 	gme.process_missile_hits()
 	gme.constrainShip()
+
 	go gme.constrainRocks()
 	go gme.constrainMissiles()
 	go gme.animateParticles()

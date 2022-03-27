@@ -121,16 +121,17 @@ func (e *explosion) canDelete() bool {
 
 func (e *explosion) Draw() {
 	t := 1 - e.timer/(e.timerMax/2)
-	if e.timer < e.timerMax/3 {
+	if e.timer < e.timerMax/3 { // phase 1 - flash
 		_gradientdisc(e.position, e.r*e.r*e.r/5, rl.ColorAlpha(rl.Yellow, float32(t)*0.3), rl.Black)
 	}
-	if e.timer < e.timerMax/2 {
+	if e.timer < e.timerMax/2 { // phase 2 - fireball
 		_disc(e.position, e.r, rl.Yellow)
 
-	} else {
-		t := e.r*2 - e.r/2
-		_gradientdisc(e.position, e.maxr, rl.ColorAlpha(rl.Yellow, float32(t)), rl.ColorAlpha(rl.Orange, float32(t)))
-		_disc(e.offs, t, rl.Black)
+	} else { // phase 3 black grow
+		r := e.r*2 - e.r/2
+		t := float32((e.timer - e.timerMax/2)) / float32(e.timerMax/2)
+		_gradientdisc(e.position, e.maxr, rl.ColorAlpha(rl.Yellow, 1-t), rl.ColorAlpha(rl.Orange, 1-t))
+		_disc(e.offs, r, rl.Black)
 
 	}
 	e.r += e.rstep

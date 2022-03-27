@@ -32,8 +32,10 @@ func main() {
 
 		if rl.IsKeyPressed('Q') {
 			game.sm.playM(sOinx)
-			game.ship.m.speed = V2{0, 0}
-			game.ship.m.pos = V2{720, 360}
+			if game.ship.cash > 16 {
+				game.ship.cash -= 16
+				game.ship.missiles += 10
+			}
 		}
 		if rl.IsKeyPressed('M') {
 			if !game.sm.mute {
@@ -50,7 +52,7 @@ func main() {
 			game.ship.isSliding = false
 		}
 		if rl.IsKeyDown('S') {
-			game.ship.thrust(1.0)
+			game.ship.thrust(0.5)
 		}
 		if rl.IsKeyReleased('S') { // -----
 			game.ship.thrust(0)
@@ -62,7 +64,7 @@ func main() {
 			game.ship.isSliding = false
 		}
 		if rl.IsKeyDown('W') {
-			game.ship.thrust(2.0)
+			game.ship.thrust(1.0)
 		}
 		if rl.IsKeyReleased('W') { // -----
 			game.ship.thrust(0)
@@ -73,13 +75,17 @@ func main() {
 			game.ship.rotate(.2)
 		}
 		if rl.IsKeyPressed(rl.KeyLeftControl) { // fire
-			if game.missilesNo < maxMissiles {
-				launchMissile(game)
-				game.sm.playM(sLaunch)
+			if game.ship.missiles > 0 {
+				game.ship.missiles--
+				game.ship.updateMass()
+				if game.missilesNo < maxMissiles {
+					launchMissile(game)
+					game.sm.playM(sLaunch)
+				}
 			}
 
 		}
-		if rl.IsKeyDown(rl.KeyCapsLock) { // slow down rotation
+		if rl.IsKeyDown(rl.KeyTab) { // slow down rotation
 			game.ship.m.rotSpeed *= 0.9
 		}
 

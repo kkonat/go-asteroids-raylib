@@ -10,6 +10,9 @@ type ship struct {
 	thr       V2
 	mass      float64
 	fuel      float64
+	health    float64
+	missiles  int
+	cash      int
 	col       rl.Color
 	isSliding bool
 	cycle     uint8
@@ -22,6 +25,10 @@ var shipShape = []V2{{-S / 2, -S}, {0, S}, {S / 2, -S}}
 func newShip(posX, posY, mass, fuel float64) *ship {
 
 	s := new(ship)
+	s.health = 100
+	s.missiles = 100
+	s.fuel = 1000
+
 	s.shape = newShape(shipShape)
 	s.m = newMotion()
 	s.m.pos.x, s.m.pos.y = posX, posY
@@ -31,7 +38,20 @@ func newShip(posX, posY, mass, fuel float64) *ship {
 	s.col = rl.White
 	s.mass = mass
 	s.fuel = fuel
+	s.updateMass()
 	return s
+}
+
+func (s *ship) chargeUp() {
+	dist := V2{1655, 400}.Sub(s.m.pos).Len()
+	chUp := 16 / dist
+	if s.fuel < 1000-chUp {
+		s.fuel += chUp
+	}
+}
+
+func (s *ship) updateMass() {
+	s.mass = s.fuel + float64(s.missiles)
 }
 func (s *ship) Draw() {
 
@@ -55,12 +75,14 @@ func (s *ship) Draw() {
 	s.cycle++
 }
 func (s *ship) thrust(fuelCons float64) {
-
-	force := fuelCons
-
-	a := force * 100 / (s.mass + s.fuel)
-	s.thr = cs(s.m.rot).MulA(a)
-	s.m.speed = s.m.speed.Add(s.thr)
+	if s.fuel > fuelCons {
+		s.fuel -= fuelCons
+		force := fuelCons
+		s.updateMass()
+		a := force * 100 / (s.mass)
+		s.thr = cs(s.m.rot).MulA(a)
+		s.m.speed = s.m.speed.Add(s.thr)
+	}
 }
 
 func (s *ship) rotate(dSpeed float64) {

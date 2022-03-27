@@ -29,6 +29,7 @@ func newStarfield(w, h int32) *starfield {
 	sf := new(starfield)
 	sf.w, sf.h = w, h
 	var s star
+
 	sf.stars = make([]star, starsNo)
 	for i := 0; i < starsNo; i++ {
 		s.x = rand.Float32() * float32(w)
@@ -43,6 +44,7 @@ func newStarfield(w, h int32) *starfield {
 	rl.UnloadImage(img)
 	sf.shader = rl.LoadShader("shaders/base.vs", "shaders/starfield.fs")
 	sf.time = make([]float32, 1)
+	sf.time[0] = 321
 	sf.iResolution = make([]float32, 2)
 	sf.iResolution[0], sf.iResolution[1] = float32(sf.w), float32(sf.h)
 	sf.timeLoc = rl.GetShaderLocation(sf.shader, "time")

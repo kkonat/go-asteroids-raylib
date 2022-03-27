@@ -19,14 +19,14 @@ mat2 Rot(float a) {
 }
 float Star(vec2 uv, float flare){
     float d = length(uv);
-    float m = .103/d;
+    float m = .203/d;
         
-    float rays = max(0., 1.-abs(uv.x*uv.y*900.));
-    m += rays*0.2*flare;
+    // float rays = max(0., 1.-abs(uv.x*uv.y*900.));
+    // m += rays*0.2*flare;
 
-    uv *= Rot(3.14159/4.);
-    rays = max(0., 1.-abs(uv.x*uv.y*1000.));
-    m += rays*.14*flare;
+    // uv *= Rot(3.14159/4.);
+    // rays = max(0., 1.-abs(uv.x*uv.y*500.));
+    // m += rays*.14*flare;
 
     m *= smoothstep(1.,.2,d);
     return m;
@@ -49,9 +49,9 @@ vec3 StarLayer(vec2 uv) {
                 float n = Hash21(id+offs);
                 float size = fract(n*345.32);
                 
-                float star = Star( gv-offs-vec2(n-0.5,fract(n*34.)-.5), 11.*smoothstep(.85,1.,size));
-                vec3 color = sin(vec3(.2,.3,.9)*fract(n*2345.2)*6.238)*.5+.5;
-                color = color*vec3(0.2+size,0+size,1.+size)*vec3(0.3,0.2,0.23);
+                float star = Star( gv-offs-vec2(n-0.5,fract(n*34.)-.5), 15.*smoothstep(.85,1.,size));
+                vec3 color = sin(vec3(.6,.9,.9)*fract(n*2345.2)*6.238)*.5+.5;
+                color = color*size*vec3(0.2,0.2,0.23);
                 col += star*size*color;
             }
     }
@@ -61,7 +61,7 @@ void main()
 {
     float aspect = iResolution.x/iResolution.y;
     vec3 col = vec3(0);
-    col = texture(texture0, fragTexCoord).rgb* vec3(0.5,0.3,0.8) - 0.1;
+    col = texture(texture0, fragTexCoord).rgb* vec3(0.5,0.3,0.6) - 0.1;
     vec2 uv = (fragTexCoord-0.5)*6.0;
     uv.y = uv.y / aspect;
     uv *= 5;
