@@ -1,5 +1,9 @@
 #version 330
-#define NUM_LAYERS 4.
+#define NUM_LAYERS 6.
+
+// Shader based on this tutorial: 
+// Pt.1 https://www.youtube.com/watch?v=rvDo9LvfoVE 
+// Pt.2 https://www.youtube.com/watch?v=dhuigO4A7RY
 
 // Input vertex attributes (from vertex shader)
 in vec2 fragTexCoord;
@@ -20,8 +24,9 @@ mat2 Rot(float a) {
 float Star(vec2 uv, float flare){
     float d = length(uv);
     float m = .203/d;
-        
-    // float rays = max(0., 1.-abs(uv.x*uv.y*900.));
+
+    // don't need rays, maybe later..        
+    // float rays = max(0., 1.-abs(uv.x*uv.y*900.));        
     // m += rays*0.2*flare;
 
     // uv *= Rot(3.14159/4.);

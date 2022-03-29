@@ -1,9 +1,6 @@
 package main
 
 import (
-	"math/rand"
-	"time"
-
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
@@ -16,88 +13,108 @@ func main() {
 	//runtime.GOMAXPROCS(8)
 
 	rl.SetTraceLog(rl.LogAll)
-
-	rand.Seed(time.Now().UnixNano())
-	_initNoise()
+	// GetWindowHandle();
 	game := newGame(1440, 720)
-	rl.DisableCursor()
-	cursorEnabled := false
+
+	initMouse()
 
 	for !rl.WindowShouldClose() {
 
-		if !game.sm.isPlaying(0) {
+		if !game.sm.isPlaying(sSpace) {
 			game.sm.play(sSpace)
-			//			fmt.Println("start backg sound")
-		}
-
-		if rl.IsKeyPressed('Q') {
-			game.sm.playM(sOinx)
-			if game.ship.cash > 16 {
-				game.ship.cash -= 16
-				game.ship.missiles += 10
-			}
-		}
-		if rl.IsKeyPressed('M') {
-			if !game.sm.mute {
-				game.sm.stop(0)
-			}
-			game.sm.mute = !game.sm.mute
 
 		}
-		if rl.IsKeyDown('A') { // rotate left
-			game.ship.rotate(-.2)
-		}
-		if rl.IsKeyPressed('S') { // small thrust
-			game.sm.play(sThrust)
-			game.ship.isSliding = false
-		}
-		if rl.IsKeyDown('S') {
-			game.ship.thrust(0.5)
-		}
-		if rl.IsKeyReleased('S') { // -----
-			game.ship.thrust(0)
-			game.ship.isSliding = true
-			game.sm.stop(sThrust)
-		}
-		if rl.IsKeyPressed('W') { // big thrust
-			game.sm.play(sThrust)
-			game.ship.isSliding = false
-		}
-		if rl.IsKeyDown('W') {
-			game.ship.thrust(1.0)
-		}
-		if rl.IsKeyReleased('W') { // -----
-			game.ship.thrust(0)
-			game.ship.isSliding = true
-			game.sm.stop(sThrust)
-		}
-		if rl.IsKeyDown('D') { // rotate right
-			game.ship.rotate(.2)
-		}
-		if rl.IsKeyPressed(rl.KeyLeftControl) { // fire
-			if game.ship.missiles > 0 {
-				game.ship.missiles--
-				game.ship.updateMass()
-				if game.missilesNo < maxMissiles {
-					launchMissile(game)
-					game.sm.playM(sLaunch)
-				}
-			}
-
-		}
-		if rl.IsKeyDown(rl.KeyTab) { // slow down rotation
-			game.ship.m.rotSpeed *= 0.9
+		if !game.sm.isPlaying(sScore) {
+			game.sm.play(sScore)
 		}
 
+		processKeys(game)
+		processMouse()
+		game.playMessages()
 		game.drawAndUpdate()
-		//printMemoryUsage()
-		dx, dy := rl.GetMouseDelta().X, rl.GetMouseDelta().X
-
-		if !cursorEnabled && dx*dx+dy*dy > 16 {
-			rl.EnableCursor()
-			cursorEnabled = true
-		}
 
 	}
 	game.finalize()
+}
+
+func processKeys(g *game) {
+	if rl.IsKeyPressed('Q') {
+		g.sm.playM(sMissilesDlvrd)
+		if g.ship.cash > 16 {
+			g.ship.cash -= 16
+			g.ship.missiles += 10
+		}
+	}
+	if rl.IsKeyPressed('M') {
+		if !g.sm.mute {
+			g.sm.stop(0)
+		}
+		g.sm.mute = !g.sm.mute
+
+	}
+	if rl.IsKeyDown('A') { // rotate left
+		g.ship.rotate(-.2)
+	}
+	if rl.IsKeyPressed('S') { // small thrust
+		g.sm.play(sThrust)
+		g.ship.isSliding = false
+	}
+	if rl.IsKeyDown('S') {
+		g.ship.thrust(0.5)
+	}
+	if rl.IsKeyReleased('S') { // -----
+		g.ship.thrust(0)
+		g.ship.isSliding = true
+		g.sm.stop(sThrust)
+	}
+	if rl.IsKeyPressed('R') { // reset shields
+		g.sm.play(sOinx)
+		g.ship.shields = 100
+		g.ship.destroyed = false
+	}
+	if rl.IsKeyPressed('W') { // big thrust
+		g.sm.play(sThrust)
+		g.ship.isSliding = false
+	}
+	if rl.IsKeyDown('W') {
+		g.ship.thrust(1.0)
+	}
+	if rl.IsKeyReleased('W') { // -----
+		g.ship.thrust(0)
+		g.ship.isSliding = true
+		g.sm.stop(sThrust)
+	}
+	if rl.IsKeyDown('D') { // rotate right
+		g.ship.rotate(.2)
+	}
+	if rl.IsKeyPressed(rl.KeyLeftControl) { // fire
+		if g.ship.missiles > 0 {
+			g.ship.missiles--
+
+			if g.missilesNo < maxMissiles {
+				launchMissile(g)
+				g.sm.playM(sLaunch)
+			}
+		}
+
+	}
+	if rl.IsKeyDown(rl.KeyTab) { // slow down rotation
+		g.ship.m.rotSpeed *= 0.9
+	}
+}
+
+var cursorEnabled bool
+
+func initMouse() {
+	rl.DisableCursor()
+	cursorEnabled = false
+}
+func processMouse() {
+	dx, dy := rl.GetMouseDelta().X, rl.GetMouseDelta().X
+
+	if !cursorEnabled && dx*dx+dy*dy > 16 {
+		rl.EnableCursor()
+		cursorEnabled = true
+	}
+
 }

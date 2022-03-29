@@ -18,18 +18,19 @@ type sparks struct {
 	lives, maxlives, seeds []uint8
 	life                   int
 	sparksNo               int
+	sCol, eCol             rl.Color
 }
 
-func newSparks(pos, mspeed V2, maxradius, duration float64) *sparks {
+func newSparks(pos, mspeed V2, count int, maxradius, duration float64, sCol, eCol rl.Color) *sparks {
 	s := new(sparks)
-	s.sparksNo = 100 + rand.Intn(40)
+	s.sparksNo = count + rand.Intn(count/2)
 	speed := 0.5 + rnd()*1.5
 	s.positions = make([]V2int, s.sparksNo)
 	s.speeds = make([]V2int, s.sparksNo)
 	s.lives = make([]uint8, s.sparksNo)
 	s.maxlives = make([]uint8, s.sparksNo)
 	s.seeds = make([]uint8, s.sparksNo)
-
+	s.sCol, s.eCol = sCol, eCol
 	angle := 0.0
 	frames := int(duration * FPS)
 
@@ -76,14 +77,14 @@ func (s *sparks) Draw() {
 	for i := 0; i < s.sparksNo; i++ {
 		if s.lives[i] < s.maxlives[i] {
 			if s.lives[i] < s.maxlives[i]/3 {
-				c := _colorBlend(s.lives[i], s.maxlives[i]/3, rl.Orange, rl.Red)
-				_squareV2int(s.positions[i], 2, c)
+				c := _colorBlend(s.lives[i], s.maxlives[i]/3, s.eCol, s.sCol)
+				_rectV2int(s.positions[i], 2, c)
 			} else {
 				t := float32(s.lives[i]-s.maxlives[i]/3) / (float32(s.maxlives[i] / 3 * 2))
 				v := float32(rand.Intn(2))
 				c := rl.ColorFromHSV(t*33, 1.0, v)
 
-				_squareV2int(s.positions[i], 2, c) // I assume this is  faster than circle
+				_rectV2int(s.positions[i], 2, c) // I assume this is  faster than circle
 			}
 		}
 	}

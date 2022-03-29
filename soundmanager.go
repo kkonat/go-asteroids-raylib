@@ -4,48 +4,74 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-type soundManager struct {
-	sounds     []rl.Sound
-	volumes    []float32
-	maxvolumes []float32
-	fadecount  []int32
-	fade       bool
-	mute       bool
-}
-
 const (
 	sSpace = iota
-	sOinx
+	sScore
+	sMissilesDlvrd
 	sThrust
 	sExpl
 	sLaunch
+	sShieldsLow
+	sAmmoLow
+	sOinx
+	sExplodeShip
+	sScratch
 )
+
+var soundFiles = map[int]struct {
+	fname      string
+	vol, pitch float32
+}{
+	// Id			  filename        vol  pitch
+	sSpace:         {"res/space.ogg", 0.5, 1.0},
+	sScore:         {"res/score.mp3", 0.1, 1.0},
+	sMissilesDlvrd: {"res/missiles-delivered.ogg", 0.5, 1.0},
+	sThrust:        {"res/thrust.ogg", 0.5, 1.0},
+	sExpl:          {"res/expl.ogg", 0.5, 0.65},
+	sLaunch:        {"res/launch.ogg", 0.5, 1.0},
+	sShieldsLow:    {"res/warning-shields-low.ogg", 0.3, 1.0},
+	sAmmoLow:       {"res/warning-ammo-low.ogg", 0.3, 1.0},
+	sOinx:          {"res/oinxL.ogg", 0.5, 1.0},
+	sExplodeShip:   {"res/shipexplode.ogg", 1.0, 1.0},
+	sScratch:       {"res/metalScratch.ogg", 0.2, 1.0},
+}
+
+type sound struct {
+	rlSound   rl.Sound
+	vol       float32
+	maxVol    float32
+	fadeCount int
+	playtime  int
+}
+
+type soundManager struct {
+	sounds []*sound
+	fade   bool
+	mute   bool
+}
 
 func newSoundManager(mute bool) *soundManager {
 	rl.InitAudioDevice()
 	sm := new(soundManager)
-	sm.loadSound(sSpace, "res/space.ogg", 0.5, 0.52)
-	sm.loadSound(sOinx, "res/oinxL.ogg", 0.7, 1.0)
-	sm.loadSound(sThrust, "res/thrust.ogg", 1.0, 1.0)
-	sm.loadSound(sExpl, "res/expl.ogg", 0.5, 0.65)
-	sm.loadSound(sLaunch, "res/launch.ogg", 0.5, 1.0)
+	sm.sounds = make([]*sound, len(soundFiles))
+
+	for i, sf := range soundFiles {
+		snd := new(sound)
+		rlSnd := rl.LoadSound(sf.fname)
+		if rlSnd.Stream.Buffer == nil {
+			panic("can't load sound, Oh no! " + sf.fname)
+		}
+		snd.rlSound = rlSnd
+		snd.maxVol, snd.vol = sf.vol, sf.vol
+		rl.SetSoundPitch(rlSnd, sf.pitch)
+		rl.SetSoundVolume(rlSnd, sf.vol)
+		sm.sounds[i] = snd
+	}
+
 	sm.mute = mute
 	return sm
 }
 
-func (sm *soundManager) loadSound(idx int, fname string, volume, pitch float32) {
-	snd := rl.LoadSound(fname)
-
-	rl.SetSoundPitch(snd, pitch)
-	rl.SetSoundVolume(snd, volume)
-	sm.sounds = append(sm.sounds, snd)
-	sm.volumes = append(sm.volumes, volume)
-	sm.maxvolumes = append(sm.maxvolumes, volume)
-	sm.fadecount = append(sm.fadecount, 0)
-	if idx != len(sm.sounds)-1 {
-		panic("soundmanager Id mismatch")
-	}
-}
 func (sm *soundManager) stop(idx int) {
 
 	// As it turns out, in raylib you can not simply stop playing sound, because you will hear a pop
@@ -56,8 +82,8 @@ func (sm *soundManager) stop(idx int) {
 	//fmt.Println("fade:", idx)
 
 	// but now, it has to be:
-	sm.fade = true         // tell the doFade() that ther's something to fade out
-	sm.fadecount[idx] = 60 // fade out in this many steps
+	sm.fade = true                // tell the doFade() that ther's something to fade out
+	sm.sounds[idx].fadeCount = 60 // fade out in this many steps
 
 }
 
@@ -65,54 +91,67 @@ func (sm *soundManager) stop(idx int) {
 func (sm *soundManager) doFade() {
 	var notFading = 0
 	if sm.fade {
-		for i, c := range sm.fadecount {
+		for i, s := range sm.sounds {
+			c := s.fadeCount
 			if c > 0 {
-
-				v := sm.volumes[i] * 0.95
-				sm.volumes[i] = v
-				rl.SetSoundVolume(sm.sounds[i], v)
+				sm.sounds[i].vol *= 0.95
+				rl.SetSoundVolume(sm.sounds[i].rlSound, sm.sounds[i].vol)
 				c--
-				sm.fadecount[i] = c
+				sm.sounds[i].fadeCount = c
 				if c == 0 {
 					notFading++
-					rl.StopSound(sm.sounds[i])
+					rl.StopSound(sm.sounds[i].rlSound)
 				}
 			} else {
 				notFading++
 			}
 		}
-		if notFading == len(sm.fadecount) {
+		if notFading == len(sm.sounds) {
 			sm.fade = false
 		}
 	}
 }
 func (sm *soundManager) play(idx int) {
 	if !sm.mute {
-		sm.fadecount[idx] = 0
-		rl.SetSoundVolume(sm.sounds[idx], sm.maxvolumes[idx])
-		sm.volumes[idx] = sm.maxvolumes[idx]
+		sm.sounds[idx].fadeCount = 0
+		rl.SetSoundVolume(sm.sounds[idx].rlSound, sm.sounds[idx].maxVol)
+		sm.sounds[idx].vol = sm.sounds[idx].maxVol
+		rl.PlaySound(sm.sounds[idx].rlSound)
 
-		rl.PlaySound(sm.sounds[idx])
+	}
+}
+func (sm *soundManager) playFor(idx, cycles int) {
+	if !sm.mute {
+		if sm.sounds[idx].playtime == 0 {
+			sm.sounds[idx].fadeCount = 0
+			sm.sounds[idx].playtime = cycles
+			rl.SetSoundVolume(sm.sounds[idx].rlSound, sm.sounds[idx].maxVol)
+			sm.sounds[idx].vol = sm.sounds[idx].maxVol
+
+			rl.PlaySound(sm.sounds[idx].rlSound)
+		} else {
+			sm.sounds[idx].playtime--
+		}
 
 	}
 }
 func (sm *soundManager) playM(idx int) {
 	if !sm.mute {
-		rl.PlaySoundMulti(sm.sounds[idx])
+		rl.PlaySoundMulti(sm.sounds[idx].rlSound)
 	}
 }
 func (sm *soundManager) playPM(idx int, pitch float32) {
 	if !sm.mute {
-		rl.SetSoundPitch(sm.sounds[idx], pitch)
-		rl.PlaySoundMulti(sm.sounds[idx])
+		rl.SetSoundPitch(sm.sounds[idx].rlSound, pitch)
+		rl.PlaySoundMulti(sm.sounds[idx].rlSound)
 	}
 }
 func (sm *soundManager) isPlaying(idx int) bool {
-	return rl.IsSoundPlaying(sm.sounds[idx])
+	return rl.IsSoundPlaying(sm.sounds[idx].rlSound)
 }
 func (sm *soundManager) unloadAll() {
 	for _, s := range sm.sounds {
-		rl.StopSound(s)
-		rl.UnloadSound(s)
+		rl.StopSound(s.rlSound)
+		rl.UnloadSound(s.rlSound)
 	}
 }

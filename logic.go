@@ -3,6 +3,8 @@ package main
 import (
 	"math/rand"
 	"sync"
+
+	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
 func (g *game) constrainShip() {
@@ -42,7 +44,7 @@ func (g *game) constrainRocks() {
 			(g.rocks[i].m.pos.y+g.rocks[i].radius < limit && g.rocks[i].m.speed.y < 0) ||
 			(g.rocks[i].m.pos.y-g.rocks[i].radius > g.gH-limit && g.rocks[i].m.speed.y > 0) {
 			mutex.Lock()
-			if g.rocksNo < preferredRocks {
+			if g.rocksNo < noPreferredRocks {
 				// respawn rock in a new sector, first randomly on the screen
 				g.rocks[i].randomize()
 				g.rocks[i].m.speed = V2{rnd()*rSpeedMax - rSpeedMax/2, rnd()*rSpeedMax - rSpeedMax/2}
@@ -121,6 +123,47 @@ func (g *game) deleteRock(r int) {
 
 var mutex sync.Mutex
 
+type circle struct {
+	p V2
+	r float64
+}
+
+func (g *game) process_ship_hits() {
+	v := cs(g.ship.m.rot)
+
+	var circles = [...]circle{ // covers ship shape with 3 circles
+		{g.ship.m.pos.Sub(v.MulA(10)), 7},
+		{g.ship.m.pos.Sub(v.MulA(-2)), 5},
+		{g.ship.m.pos.Sub(v.MulA(-10)), 3}}
+
+	// for _, c := range circles {
+	// 	_circle(c.p, c.r, rl.Yellow)
+	// }
+
+	for r := 0; r < g.rocksNo; r++ {
+		for _, c := range circles {
+			dist2 := g.rocks[r].m.pos.Sub(c.p).Len2()
+			if dist2 < squared(g.rocks[r].radius+c.r) {
+				if g.ship.shields > 0.7 {
+					g.ship.shields -= 0.7
+					g.sm.playFor(sScratch, 80)
+				} else {
+					g.addParticle(newSparks(g.ship.m.pos, g.ship.m.speed, 300, 260, 5, rl.White, rl.DarkBrown))
+					if !g.ship.destroyed {
+						g.sm.play(sExplodeShip)
+					}
+					g.ship.destroyed = true
+
+					//game_over()
+				}
+			} else {
+				g.sm.stop(sScratch)
+			}
+
+		}
+	}
+}
+
 func (g *game) process_missile_hits() {
 	const mr = 10 // missile radius
 	for r := 0; r < g.rocksNo; r++ {
@@ -133,7 +176,7 @@ func (g *game) process_missile_hits() {
 				distBonus := g.ship.m.pos.Sub(g.rocks[r].m.pos).Len() / 200
 				g.ship.cash += 1 + int(100/g.rocks[r].radius*distBonus/3)
 				g.addParticle(newExplosion(g.missiles[m].m.pos, g.missiles[m].m.speed, 30, 0.5))
-				g.addParticle(newSparks(g.missiles[m].m.pos, g.missiles[m].m.speed, 100, 2.0))
+				g.addParticle(newSparks(g.missiles[m].m.pos, g.missiles[m].m.speed, 100, 100, 2.0, rl.Orange, rl.Red))
 
 				// sound
 				g.sm.playPM(sExpl, 0.5+rnd32())

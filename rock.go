@@ -65,6 +65,23 @@ func (r *Rock) randomize() {
 
 }
 
+func generateRocks(g *game, preferredRocks int) {
+
+	const safeCircle = 200
+
+	cX, cY := g.ship.m.pos.x, g.ship.m.pos.y
+
+	i := 0
+	for i < preferredRocks { // ( cx +r )  ( nr.x +nr.r)
+		nr := newRockRandom(g)
+		if cX+safeCircle < nr.m.pos.x+nr.radius || cX-safeCircle > nr.m.pos.x-nr.radius ||
+			cY+safeCircle < nr.m.pos.y+nr.radius || cY-safeCircle > nr.m.pos.y-nr.radius {
+			g.rocks[i] = nr
+			i++
+		}
+	}
+	g.rocksNo = i
+}
 func (r *Rock) Draw() {
 	r.shape.DrawThin(r.m, rl.Black, rl.DarkGray, 0.75)
 }
