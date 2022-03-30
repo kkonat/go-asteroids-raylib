@@ -16,6 +16,7 @@ const (
 	sOinx
 	sExplodeShip
 	sScratch
+	sChargeUp
 )
 
 var soundFiles = map[int]struct {
@@ -34,6 +35,7 @@ var soundFiles = map[int]struct {
 	sOinx:          {"res/oinxL.ogg", 0.5, 1.0},
 	sExplodeShip:   {"res/shipexplode.ogg", 1.0, 1.0},
 	sScratch:       {"res/metalScratch.ogg", 0.2, 1.0},
+	sChargeUp:      {"res/chargeup.ogg", 0.2, 1.0},
 }
 
 type sound struct {
@@ -86,6 +88,12 @@ func (sm *soundManager) stop(idx int) {
 	sm.sounds[idx].fadeCount = 60 // fade out in this many steps
 
 }
+func (sm *soundManager) stopAll() {
+	for i := range sm.sounds {
+		sm.sounds[i].fadeCount = 60
+	}
+	sm.fade = true
+}
 
 // so this function is called every frame to check if there's anything to fade out
 func (sm *soundManager) doFade() {
@@ -137,11 +145,13 @@ func (sm *soundManager) playFor(idx, cycles int) {
 }
 func (sm *soundManager) playM(idx int) {
 	if !sm.mute {
+		rl.SetSoundVolume(sm.sounds[idx].rlSound, sm.sounds[idx].maxVol)
 		rl.PlaySoundMulti(sm.sounds[idx].rlSound)
 	}
 }
 func (sm *soundManager) playPM(idx int, pitch float32) {
 	if !sm.mute {
+		rl.SetSoundVolume(sm.sounds[idx].rlSound, sm.sounds[idx].maxVol)
 		rl.SetSoundPitch(sm.sounds[idx].rlSound, pitch)
 		rl.PlaySoundMulti(sm.sounds[idx].rlSound)
 	}

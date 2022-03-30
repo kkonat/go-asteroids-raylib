@@ -25,8 +25,9 @@ type starfield struct {
 
 const starsNo = 1000
 
-func newStarfield(w, h int32) *starfield {
+func newStarfield(w, h int32, time []float32) *starfield {
 	sf := new(starfield)
+	sf.time = time
 	sf.w, sf.h = w, h
 	var s star
 
@@ -43,7 +44,7 @@ func newStarfield(w, h int32) *starfield {
 	sf.starfTex = rl.LoadTextureFromImage(img)
 	rl.UnloadImage(img)
 	sf.shader = rl.LoadShader("shaders/base.vs", "shaders/starfield.fs")
-	sf.time = make([]float32, 1)
+
 	sf.time[0] = 321
 	sf.iResolution = make([]float32, 2)
 	sf.iResolution[0], sf.iResolution[1] = float32(sf.w), float32(sf.h)
@@ -53,11 +54,9 @@ func newStarfield(w, h int32) *starfield {
 	return sf
 }
 func (sf *starfield) draw() {
-	// var x float32
-	// c := rl.NewColor(0, 0, 0, 255)
 
-	sf.time[0] += 0.01
 	rl.SetShaderValue(sf.shader, sf.timeLoc, sf.time, rl.ShaderUniformFloat)
+
 	rl.BeginShaderMode(sf.shader)
 	rl.DrawTexture(sf.starfTex, 0, 0, rl.White)
 
@@ -67,6 +66,8 @@ func (sf *starfield) draw() {
 	rl.DrawCircleLines(1655, 400, 400, rl.NewColor(40, 10, 140, 255))
 	rl.DrawCircle(1655, 400, 400, rl.NewColor(20, 0, 70, 255))
 
+	// var x float32	// early version on floats
+	// c := rl.NewColor(0, 0, 0, 255)
 	// for i, s := range sf.stars {
 	// 	c.B = uint8(s.speed * 25)
 	// 	c.R = s.r

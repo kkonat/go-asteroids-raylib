@@ -9,7 +9,7 @@ type ship struct {
 	m         *motion
 	thr       V2
 	mass      float64
-	fuel      float64
+	energy    float64
 	shields   float64
 	missiles  int
 	cash      int
@@ -28,7 +28,7 @@ func newShip(posX, posY, mass, fuel float64) *ship {
 	s := new(ship)
 	s.shields = 100
 	s.missiles = 100
-	s.fuel = 1000
+	s.energy = 1000
 
 	s.destroyed = false
 	s.shape = newShape(shipShape)
@@ -39,7 +39,7 @@ func newShip(posX, posY, mass, fuel float64) *ship {
 
 	s.col = rl.White
 	s.mass = mass
-	s.fuel = fuel
+	s.energy = fuel
 
 	return s
 }
@@ -48,14 +48,14 @@ func (s *ship) chargeUp() {
 	if !s.destroyed {
 		dist := V2{1655, 400}.Sub(s.m.pos).Len()
 		chUp := 16 / dist
-		if s.fuel < 1000-chUp {
-			s.fuel += chUp
-			if s.fuel >= 1000 {
-				s.fuel = 1000
+		if s.energy < 1000-chUp {
+			s.energy += chUp
+			if s.energy >= 1000 {
+				s.energy = 1000
 			}
 		}
 		if s.shields < 100 {
-			s.shields += 0.01
+			s.shields += 0.001
 		}
 	}
 }
@@ -83,8 +83,8 @@ func (s *ship) Draw() {
 	}
 }
 func (s *ship) thrust(fuelCons float64) {
-	if s.fuel > fuelCons {
-		s.fuel -= fuelCons
+	if s.energy > fuelCons {
+		s.energy -= fuelCons
 		force := fuelCons
 
 		a := force * 0.1

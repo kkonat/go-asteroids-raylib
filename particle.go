@@ -114,6 +114,7 @@ func (e *explosion) Animate() {
 	}
 	e.position = e.position.Add(e.speed)
 	e.offs = e.offs.Add(e.speed)
+	e.r += e.rstep
 }
 
 func (e *explosion) canDelete() bool {
@@ -133,7 +134,5 @@ func (e *explosion) Draw() {
 		t := float32((e.timer - e.timerMax/2)) / float32(e.timerMax/2)
 		_gradientdisc(e.position, e.maxr, rl.ColorAlpha(rl.Yellow, 1-t), rl.ColorAlpha(rl.Orange, 1-t))
 		_disc(e.offs, r, rl.Black)
-
 	}
-	e.r += e.rstep
 }

@@ -9,7 +9,10 @@ _Controls:_
 - [**S**], [**W**] - small thrust, more thrust
 - [**D**] - Turn right
 - [**Q**] - Buy 10 missiles for 16 cash
+- [**F**] - Transfer energy to shields
 - [**Ctrl**] - Shoot a missile
+- [**P**] - Pause
+- [**R**] - Respawn (for debug purposes, will be deleted)
 - [**M**] - Mute/Unmute sounds
 - The closer is the ship to the purple planet, the faster it tops up the fuel
 
