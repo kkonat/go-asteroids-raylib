@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"image/color"
 	"math/rand"
 	"sync"
@@ -25,49 +24,19 @@ const (
 	ammoLowLimit     = 20
 )
 
-// type object interface {
-// 	isAt() bool
-// 	Draw()
-// }
-// type crateObj struct {
-// 	m        motion
-// 	spriteId int
-// }
-
-// func (o *crateObj) isAt() bool {
-// 	panic("TODO")
-// 	return false
-// }
-// func (o *crateObj) Draw() {
-// 	panic("TODO")
-
-// }
-// func newCrate(spriteIdx int, pos, speed V2, rotSpeed float64) object {
-
-// 	o := new(crateObj)
-// 	o.m.pos = pos
-// 	o.m.speed = speed
-// 	o.spriteId = spriteIdx
-
-// 	return o
-// }
-
 type game struct {
 	sm   *soundManager
 	sprm *spriteManager
 	sf   *starfield
-	time []float32
+	time []float32 // gsls uniform [1]float32
 	ship *ship
 
-	rocks      [maxRocks]*Rock
-	rocksNo    int
-	missiles   [maxMissiles]*missile
-	missilesNo int
+	rocks     []*Rock
+	missiles  []*missile
+	particles []particle
 
 	qt *QuadTree
 
-	particles   [maxParticles]particle
-	particlesNo int
 	//objects     []*object
 
 	sW, sH        int32
@@ -75,6 +44,7 @@ type game struct {
 	ufo           rl.Texture2D
 	paused        bool
 	cursorEnabled bool
+	debug         bool
 }
 
 // global time counters
@@ -183,47 +153,45 @@ func (g *game) drawStatusBar() {
 }
 
 func (gme *game) addParticle(p particle) {
-	if gme.particlesNo < maxParticles {
-		gme.particles[gme.particlesNo] = p
-		gme.particlesNo++
+	if len(gme.particles) < maxParticles {
+		gme.particles = append(gme.particles, p)
 	}
 }
 func (gme *game) animateParticles() {
-	for i := 0; i < gme.particlesNo; i++ {
+	var i int
+	for i < len(gme.particles) {
 		gme.particles[i].Animate()
 		if gme.particles[i].canDelete() {
-			gme.particlesNo--
-
-			gme.particles[i] = gme.particles[gme.particlesNo]
-			gme.particles[gme.particlesNo] = nil
+			gme.particles = append(gme.particles[:i], gme.particles[i+1:]...)
+		} else {
+			i++
 		}
 	}
 }
 func (gme *game) drawRocks() {
-	for i := 0; i < gme.rocksNo; i++ { // draw rocks
-		gme.rocks[i].Draw()
+	for _, r := range gme.rocks { // draw rocks
+		r.Draw()
 	}
 }
 func (gme *game) drawMissiles() {
-	for i := 0; i < gme.missilesNo; i++ { // draw missiles
-		gme.missiles[i].Draw()
-
+	for _, m := range gme.missiles {
+		m.Draw()
 	}
 }
 func (gme *game) drawParticles() {
-	for i := 0; i < gme.particlesNo; i++ {
+	for i := 0; i < len(gme.particles); i++ {
 		gme.particles[i].Draw()
 	}
 }
 
 func (gme *game) moveRocks(dt float64) {
-	for i := 0; i < gme.rocksNo; i++ { // move rocks
+	for i := 0; i < len(gme.rocks); i++ { // move rocks
 		go gme.rocks[i].m.Move(dt)
 	}
 	wg.Done()
 }
 func (gme *game) moveMissiles(dt float64) {
-	for i := 0; i < gme.missilesNo; i++ { // move missiles
+	for i := range gme.missiles { // move missiles
 		go gme.missiles[i].m.Move(dt)
 	}
 	wg.Done()
@@ -250,35 +218,12 @@ func (gme *game) drawAndUpdate() {
 
 	gme.drawRocks()
 
-	gme.qt.Clear()
-	for i := 0; i < gme.rocksNo; i++ {
-		r := gme.rocks[i]
-		gme.qt.Insert(newCircleV2(r.m.pos, r.radius))
-	}
-
-	largerCircle := newCircleV2(gme.ship.m.pos, 20)
-
-	potCols := gme.qt.MayCollide(largerCircle)
-	for _, c := range potCols {
-		rl.DrawRectangleLines(c.rect.x, c.rect.y, c.rect.w, c.rect.h, rl.Beige)
-	}
-
-	for m := 0; m < gme.missilesNo; m++ {
-		largerCircle = newCircleV2(gme.missiles[m].m.pos, 10)
-		potCols = gme.qt.MayCollide(largerCircle)
-		for _, c := range potCols {
-			rl.DrawRectangleLines(c.rect.x, c.rect.y, c.rect.w, c.rect.h, rl.DarkGreen)
-			str := fmt.Sprintf("[%d]", m)
-			rl.DrawText(str, c.rect.x, c.rect.y, 16, rl.Lime)
-		}
-	}
-
-	//fmt.Println("ROCKS", gme.rocksNo, " / Total ", gme.qt.TotalNodes(), " / pot cols", len(potCols))
+	gme.debugQt()
 
 	gme.drawMissiles()
 	gme.drawParticles()
-	gme.ship.Draw()     // draw ship
-	gme.drawStatusBar() // draw status bar on top of everything
+	gme.ship.Draw()
+	gme.drawStatusBar()
 
 	rl.EndDrawing()
 
@@ -292,7 +237,7 @@ func (gme *game) drawAndUpdate() {
 
 	if !gme.paused {
 
-		gme.time[0] += 0.01 // uniform for starfield simulation
+		gme.time[0] += 0.01 // glsl uniform for starfield shader
 
 		gme.ship.m.Move(dt)
 
@@ -324,8 +269,8 @@ func (gme *game) drawAndUpdate() {
 }
 func (g *game) processKeys() {
 	if rl.IsKeyPressed('Q') {
-		g.sm.playM(sMissilesDlvrd)
 		if g.ship.cash > 16 {
+			g.sm.playM(sMissilesDlvrd)
 			g.addParticle(newTextPart(g.ship.m.pos, g.ship.m.speed.MulA(0.5), "+20 missiles", 20, 3, rl.Purple, rl.DarkPurple))
 			g.ship.cash -= 16
 			g.ship.missiles += 20
@@ -345,13 +290,16 @@ func (g *game) processKeys() {
 		g.sm.play(sThrust)
 		g.ship.isSliding = false
 	}
-	if rl.IsKeyDown('S') {
+	if rl.IsKeyDown('S') { // hold thrust
 		g.ship.thrust(0.5)
 	}
-	if rl.IsKeyReleased('S') { // -----
+	if rl.IsKeyReleased('S') { // end thrust
 		g.ship.thrust(0)
 		g.ship.isSliding = true
 		g.sm.stop(sThrust)
+	}
+	if rl.IsKeyPressed(rl.KeyF1) { /// debug
+		g.debug = !g.debug
 	}
 	if rl.IsKeyPressed('R') { // reset shields
 		g.sm.play(sOinx)
@@ -392,12 +340,11 @@ func (g *game) processKeys() {
 		if g.ship.missiles > 0 {
 			g.ship.missiles--
 
-			if g.missilesNo < maxMissiles {
+			if len(g.missiles) < maxMissiles {
 				launchMissile(g)
 				g.sm.playM(sLaunch)
 			}
 		}
-
 	}
 	if rl.IsKeyDown(rl.KeyTab) { // slow down rotation
 		g.ship.m.rotSpeed *= 0.9
@@ -416,10 +363,46 @@ func (g *game) processMouse() {
 		rl.EnableCursor()
 		g.cursorEnabled = true
 	}
-
 }
 func (g *game) finalize() {
 	rl.CloseWindow()
 	g.sm.unloadAll()
 	g.sprm.unloadAll()
+}
+
+// -- debug
+func drawQt(qt *QuadTree) {
+	rl.DrawRectangleLines(qt.Bounds.x, qt.Bounds.y, qt.Bounds.w, qt.Bounds.h, rl.DarkGray)
+	for i := 0; i < 4; i++ {
+		if qt.Nodes[i] != nil {
+			drawQt(qt.Nodes[i])
+		}
+	}
+}
+func (gme *game) debugQt() {
+	if gme.debug {
+		// str := fmt.Sprintf("[%d,%d]",int32(gme.ship.m.pos.x),int32(gme.ship.m.pos.y))
+		// rl.DrawText(str, int32(gme.ship.m.pos.x),int32(gme.ship.m.pos.y), 20, rl.Gray)
+		gme.qt.Clear()
+		for _, r := range gme.rocks {
+			gme.qt.Insert(newCircleV2(r.m.pos, r.radius))
+		}
+
+		largerCircle := newCircleV2(gme.ship.m.pos, 20)
+
+		potCols := gme.qt.MayCollide(largerCircle)
+		for _, c := range potCols {
+			rl.DrawRectangleLines(c.rect.x, c.rect.y, c.rect.w, c.rect.h, rl.Beige)
+		}
+		drawQt(gme.qt)
+		// for i, missile := range gme.missiles {
+		// 	largerCircle = newCircleV2(missile.m.pos, 10)
+		// 	potCols = gme.qt.MayCollide(largerCircle)
+		// 	for _, c := range potCols {
+		// 		rl.DrawRectangleLines(c.rect.x, c.rect.y, c.rect.w, c.rect.h, rl.DarkGreen)
+		// 		str := fmt.Sprintf("[%d]", i)
+		// 		rl.DrawText(str, c.rect.x+int32(i*16), c.rect.y, 16, rl.Lime)
+		// 	}
+		// }
+	}
 }

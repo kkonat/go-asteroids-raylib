@@ -49,7 +49,7 @@ func (tp *textPart) Animate() {
 	}
 }
 func (tp *textPart) Draw() {
-	col := _colorBlend(tp.life, tp.maxLife, tp.sCol, tp.eCol)
+	col := _colorBlend(tp.life, tp.maxLife, tp.eCol, tp.sCol) // tp.life goes from 1 to 0, so reverse blend
 	rl.DrawText(tp.text, int32(tp.pos.x)-tp.textW, int32(tp.pos.y)-tp.size/2, tp.size, col)
 }
 
@@ -118,12 +118,13 @@ func (s *sparks) Draw() {
 	for i := 0; i < s.sparksNo; i++ {
 		if s.lives[i] < s.maxlives[i] {
 			if s.lives[i] < s.maxlives[i]/3 {
-				c := _colorBlend(s.lives[i], s.maxlives[i]/3, s.eCol, s.sCol)
+				c := _colorBlend(s.lives[i], s.maxlives[i]/3, s.sCol, s.eCol)
 				_rectFxdV2(s.positions[i], 2, c)
 			} else {
 				t := float32(s.lives[i]-s.maxlives[i]/3) / (float32(s.maxlives[i] / 3 * 2))
-				v := float32(rand.Intn(2))
-				c := rl.ColorFromHSV(t*33, 1.0, v)
+				//v := float32(rand.Intn(2))
+				c := _colorBlendFloat(t, s.eCol, rl.Fade(s.eCol, t))
+				//c := rl.ColorFromHSV(t*33, 1.0, v)
 
 				_rectFxdV2(s.positions[i], 2, c) // I assume this is  faster than circle
 			}

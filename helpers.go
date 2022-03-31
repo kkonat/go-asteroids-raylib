@@ -94,10 +94,17 @@ func _multicolorText(x, y int32, size int32, args ...interface{}) int32 {
 	return int32(width)
 }
 func lerp(t float32, a, b uint8) uint8 {
-	return uint8(float32(a)*t + float32(b)*(1.0-t))
+	return uint8(float32(a)*(1.0-t) + float32(b)*t)
 }
 func _colorBlend(t0, maxt uint8, col1, col2 rl.Color) rl.Color {
 	t := float32(t0) / float32(maxt)
+	return rl.Color{
+		lerp(t, col1.R, col2.R),
+		lerp(t, col1.G, col2.G),
+		lerp(t, col1.B, col2.B),
+		lerp(t, col1.A, col2.A)}
+}
+func _colorBlendFloat(t float32, col1, col2 rl.Color) rl.Color {
 	return rl.Color{
 		lerp(t, col1.R, col2.R),
 		lerp(t, col1.G, col2.G),

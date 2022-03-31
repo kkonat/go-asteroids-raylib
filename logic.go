@@ -38,14 +38,14 @@ func (g *game) constrainShip() {
 func (g *game) constrainRocks() {
 	const limit = -50 // ordinate to detect rock going off screen / respawn new one
 
-	for i := 0; i < g.rocksNo; i++ {
+	for i := 0; i < len(g.rocks); i++ {
 
 		if (g.rocks[i].m.pos.x+g.rocks[i].radius < limit && g.rocks[i].m.speed.x < 0) ||
 			(g.rocks[i].m.pos.x-g.rocks[i].radius > g.gW-limit && g.rocks[i].m.speed.x > 0) ||
 			(g.rocks[i].m.pos.y+g.rocks[i].radius < limit && g.rocks[i].m.speed.y < 0) ||
 			(g.rocks[i].m.pos.y-g.rocks[i].radius > g.gH-limit && g.rocks[i].m.speed.y > 0) {
 			mutex.Lock()
-			if g.rocksNo < noPreferredRocks {
+			if len(g.rocks) < noPreferredRocks {
 				// respawn rock in a new sector, first randomly on the screen
 				g.rocks[i].randomize()
 				g.rocks[i].m.speed = V2{rnd()*rSpeedMax - rSpeedMax/2, rnd()*rSpeedMax - rSpeedMax/2}
@@ -96,30 +96,26 @@ func (g *game) constrainRocks() {
 }
 func (g *game) constrainMissiles() {
 	const limit = -10
-
-	i := 0
-	for i < g.missilesNo {
+	var i int
+	for i < len(g.missiles) {
 		p := g.missiles[i].m.pos
 		if p.x <= limit || p.x > g.gW-limit ||
 			p.y <= limit || p.y > g.gH-limit {
 			mutex.Lock()
 			g.deleteMissile(i)
 			mutex.Unlock()
-			continue
+		} else {
+			i++
 		}
-		i++
 	}
 }
 
 func (g *game) deleteMissile(m int) {
-	g.missilesNo--
-	g.missiles[m] = g.missiles[g.missilesNo]
-	g.missiles[g.missilesNo] = nil
+
+	g.missiles = append(g.missiles[:m], g.missiles[m+1:]...)
 }
 func (g *game) deleteRock(r int) {
-	g.rocksNo--
-	g.rocks[r] = g.rocks[g.rocksNo]
-	g.rocks[g.rocksNo] = nil
+	g.rocks = append(g.rocks[:r], g.rocks[r+1:]...)
 }
 
 var mutex sync.Mutex
@@ -164,10 +160,10 @@ func (g *game) process_ship_hits() {
 	// 	_circle(c.p, c.r, rl.Yellow)
 	// }
 
-	for r := 0; r < g.rocksNo; r++ {
+	for _, r := range g.rocks {
 		for _, c := range circles {
-			dist2 := g.rocks[r].m.pos.Sub(c.p).Len2()
-			if dist2 < squared(g.rocks[r].radius+c.r) {
+			dist2 := r.m.pos.Sub(c.p).Len2()
+			if dist2 < squared(r.radius+c.r) {
 				if g.ship.shields > 0.7 {
 					g.ship.shields -= 0.7
 					g.sm.playFor(sScratch, 80)
@@ -190,15 +186,15 @@ func (g *game) process_ship_hits() {
 
 func (g *game) process_missile_hits() {
 	const mr = 10 // missile radius
-	for r := 0; r < g.rocksNo; r++ {
-		for m := 0; m < g.missilesNo; m++ {
+	for i, r := range g.rocks {
+		for m := range g.missiles {
 			mp := g.missiles[m].m.pos
-			rp := g.rocks[r].m.pos
+			rp := r.m.pos
 			dist2 := rp.Sub(mp).Len2()
-			if dist2 < squared(g.rocks[r].radius+mr) { // hit
+			if dist2 < squared(r.radius+mr) { // hit
 				// explosion vFX
-				distBonus := g.ship.m.pos.Sub(g.rocks[r].m.pos).Len() / 200
-				score := 1 + int(100/g.rocks[r].radius*distBonus/3)
+				distBonus := g.ship.m.pos.Sub(r.m.pos).Len() / 200
+				score := 1 + int(100/r.radius*distBonus/3)
 				g.ship.cash += score
 				str := fmt.Sprintf("+%d", score)
 				g.addParticle(newTextPart(g.missiles[m].m.pos, g.missiles[m].m.speed, str, 16, 2, rl.Yellow, rl.Red))
@@ -209,19 +205,18 @@ func (g *game) process_missile_hits() {
 				g.sm.playPM(sExpl, 0.5+rnd32())
 
 				// split rock
-				nr := g.rocks[r].split(g.missiles[m].m.pos, g.missiles[m].m.speed, 6)
+				nr := g.rocks[i].split(g.missiles[m].m.pos, g.missiles[m].m.speed, 6)
 
 				// copy new rocks
 				for i := 0; i < len(nr); i++ {
 					if nr[i].radius > 8 {
-						if g.rocksNo < maxRocks {
-							g.rocks[g.rocksNo] = nr[i]
-							g.rocks[g.rocksNo].buildShape()
-							g.rocksNo++
+						if len(g.rocks) < maxRocks {
+							g.rocks = append(g.rocks, nr[i])
+							nr[i].buildShape()
 						}
 					}
 				}
-				g.deleteRock(r)
+				g.deleteRock(i)
 				g.deleteMissile(m)
 				break
 			}

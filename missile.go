@@ -27,8 +27,7 @@ func launchMissile(game *game) {
 	dir := cs(m.m.rot)
 	m.m.speed = dir.MulA(spd + 2.0)
 
-	game.missiles[game.missilesNo] = m
-	game.missilesNo++
+	game.missiles = append(game.missiles, m)
 }
 
 func (m missile) Draw() {

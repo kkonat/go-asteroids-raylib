@@ -2,7 +2,7 @@ package main
 
 // https://gamedevelopment.tutsplus.com/tutorials/quick-tip-use-quadtrees-to-detect-likely-collisions-in-2d-space--gamedev-374
 
-const maxObjects = 15
+const maxObjects = 5
 const maxLevels = 5
 
 type Rect struct {
@@ -52,13 +52,13 @@ func (qt *QuadTree) TotalNodes() int {
 func (q *QuadTree) Clear() {
 
 	q.Objects = nil
-		for i := 0; i < 4; i++ {
-			if q.Nodes[i] != nil {
-				q.Nodes[i].Clear()
-				q.Nodes[i] = nil
-			}
-
+	for i := 0; i < 4; i++ {
+		if q.Nodes[i] != nil {
+			q.Nodes[i].Clear()
+			q.Nodes[i] = nil
 		}
+
+	}
 	q.Total = 0
 }
 
@@ -66,8 +66,8 @@ func (q *QuadTree) split() {
 	subW, subH := q.Bounds.w/2, q.Bounds.h/2
 	x, y := q.Bounds.x, q.Bounds.y
 
-	q.Nodes[0] = NewQuadTree(q.Level+1, Rect{x + subW, y, subW, subH})
-	q.Nodes[1] = NewQuadTree(q.Level+1, Rect{x, y, subW, subH})
+	q.Nodes[0] = NewQuadTree(q.Level+1, Rect{x, y, subW, subH})
+	q.Nodes[1] = NewQuadTree(q.Level+1, Rect{x + subW, y, subW, subH})
 	q.Nodes[2] = NewQuadTree(q.Level+1, Rect{x, y + subH, subW, subH})
 	q.Nodes[3] = NewQuadTree(q.Level+1, Rect{x + subW, y + subH, subW, subH})
 }
@@ -87,11 +87,10 @@ func (q *QuadTree) getQuadrant(o *circle) int {
 	cx := q.Bounds.x + (q.Bounds.w / 2)
 	cy := q.Bounds.y + (q.Bounds.h / 2)
 
-	fitsInTop := (o.bRect().x < cy && o.bRect().x+o.bRect().h < cy)
+	fitsInTop := (o.bRect().y+o.bRect().h < cy)
 	fitsInBottom := (o.bRect().y > cy)
-
 	// left quadrants
-	if o.bRect().x < cx && o.bRect().x+o.bRect().w < cx {
+	if o.bRect().x+o.bRect().w < cx {
 		if fitsInTop {
 			quadrant = qTopLeft
 		} else if fitsInBottom {

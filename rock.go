@@ -42,8 +42,8 @@ func (r Rock) bRect() Rect {
 		int32(r.m.pos.y - r.radius),
 		int32(r.m.pos.x + r.radius),
 		int32(r.m.pos.y + r.radius)}
-
 }
+
 func (r *Rock) buildShape() {
 	n := 6 + rand.Intn(10) + int(r.radius/5)
 	var step = 360 / float64(n)
@@ -83,11 +83,11 @@ func generateRocks(g *game, preferredRocks int) {
 		nr := newRockRandom(g)
 		if cX+safeCircle < nr.m.pos.x+nr.radius || cX-safeCircle > nr.m.pos.x-nr.radius ||
 			cY+safeCircle < nr.m.pos.y+nr.radius || cY-safeCircle > nr.m.pos.y-nr.radius {
-			g.rocks[i] = nr
+			g.rocks = append(g.rocks, nr)
 			i++
 		}
 	}
-	g.rocksNo = i
+
 }
 func (r *Rock) Draw() {
 	r.shape.DrawThin(r.m, rl.Black, rl.DarkGray, 0.75)
