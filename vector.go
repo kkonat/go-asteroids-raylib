@@ -6,38 +6,12 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-type M22 struct {
-	a00, a01, a10, a11 float64
-}
-
 func (m *M22) Mul(v V2) V2 {
 	return M22MulV(*m, v)
 }
-
-const V2intShift = 8
-
-func FromFloat(a float64) int32 {
-	return int32(float64(1<<V2intShift) * a)
-}
-
-type V2int struct {
-	x, y int32
-}
-
 type V2 struct {
 	x, y float64
 }
-
-func (v V2) ToV2int() V2int {
-	return V2int{FromFloat(v.x), FromFloat(v.y)}
-}
-func (v V2int) MulA(a int32) V2int {
-	return V2int{(v.x * a) >> V2intShift, (v.y * a) >> V2intShift}
-}
-func (v1 V2int) Add(v2 V2int) V2int {
-	return V2int{v1.x + v2.x, v1.y + v2.y}
-}
-
 func (v1 *V2) Incr(v2 V2) {
 	v1.x += v2.x
 	v1.y += v2.y

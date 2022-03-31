@@ -1,0 +1,10 @@
+vst plugin VstSpeek3
+pitch 60
+speed 72
+mouth/throat 135
+
+reverb
+Teufelsberg reverb
+reverb type 6
+mix 31.25%
+-

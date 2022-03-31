@@ -57,8 +57,8 @@ func _triangle(p1, p2, p3 V2, col rl.Color) {
 func _rect(p1 V2, d int32, col rl.Color) {
 	rl.DrawRectangle(int32(p1.x), int32(p1.y), d, d, col)
 }
-func _rectV2int(p1 V2int, d int32, col rl.Color) {
-	rl.DrawRectangle(p1.x>>V2intShift, p1.y>>V2intShift, d, d, col)
+func _rectFxdV2(p1 fxdV2, d int32, col rl.Color) {
+	rl.DrawRectangle(int32(p1.x>>fxdFloatShift), int32(p1.y>>fxdFloatShift), d, d, col)
 }
 
 // writes text with multiple Colors

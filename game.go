@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"image/color"
 	"math/rand"
 	"sync"
@@ -15,7 +16,7 @@ import (
 const (
 	caption          = "test boom boom game"
 	rSpeedMax        = 1
-	noPreferredRocks = 12
+	noPreferredRocks = 30
 	maxRocks         = 100
 	maxMissiles      = 50
 	maxParticles     = 50
@@ -24,46 +25,50 @@ const (
 	ammoLowLimit     = 20
 )
 
-type object interface {
-	isAt() bool
-	Draw()
-}
-type crateObj struct {
-	m        motion
-	spriteId int
-}
+// type object interface {
+// 	isAt() bool
+// 	Draw()
+// }
+// type crateObj struct {
+// 	m        motion
+// 	spriteId int
+// }
 
-func (o *crateObj) isAt() bool {
-	panic("TODO")
-	return false
-}
-func (o *crateObj) Draw() {
-	panic("TODO")
+// func (o *crateObj) isAt() bool {
+// 	panic("TODO")
+// 	return false
+// }
+// func (o *crateObj) Draw() {
+// 	panic("TODO")
 
-}
-func newCrate(spriteIdx int, pos, speed V2, rotSpeed float64) object {
+// }
+// func newCrate(spriteIdx int, pos, speed V2, rotSpeed float64) object {
 
-	o := new(crateObj)
-	o.m.pos = pos
-	o.m.speed = speed
-	o.spriteId = spriteIdx
+// 	o := new(crateObj)
+// 	o.m.pos = pos
+// 	o.m.speed = speed
+// 	o.spriteId = spriteIdx
 
-	return o
-}
+// 	return o
+// }
 
 type game struct {
-	sm          *soundManager
-	sprm        *spriteManager
-	sf          *starfield
-	time        []float32
-	ship        *ship
-	rocks       [maxRocks]*Rock
-	rocksNo     int
-	missiles    [maxMissiles]*missile
-	missilesNo  int
+	sm   *soundManager
+	sprm *spriteManager
+	sf   *starfield
+	time []float32
+	ship *ship
+
+	rocks      [maxRocks]*Rock
+	rocksNo    int
+	missiles   [maxMissiles]*missile
+	missilesNo int
+
+	qt *QuadTree
+
 	particles   [maxParticles]particle
 	particlesNo int
-	objects     []*object
+	//objects     []*object
 
 	sW, sH        int32
 	gW, gH        float64
@@ -93,6 +98,8 @@ func newGame(w, h int32) *game {
 	rl.SetTargetFPS(FPS)
 
 	g := new(game)
+
+	g.qt = NewQuadTree(0, Rect{0, 0, w, h})
 	g.initMouse()
 	g.paused = false
 	g.sW, g.sH = w, h
@@ -104,7 +111,7 @@ func newGame(w, h int32) *game {
 	g.sm = newSoundManager(false)
 	g.sprm = newSpriteManager()
 
-	g.objects = make([]*object, 0, 20)
+	//g.objects = make([]*object, 0, 20)
 
 	g.ship = newShip(float64(w/2), float64(h/2), 1000, 1000)
 
@@ -242,6 +249,32 @@ func (gme *game) drawAndUpdate() {
 	gme.sf.draw() // draw starfield
 
 	gme.drawRocks()
+
+	gme.qt.Clear()
+	for i := 0; i < gme.rocksNo; i++ {
+		r := gme.rocks[i]
+		gme.qt.Insert(newCircleV2(r.m.pos, r.radius))
+	}
+
+	largerCircle := newCircleV2(gme.ship.m.pos, 20)
+
+	potCols := gme.qt.MayCollide(largerCircle)
+	for _, c := range potCols {
+		rl.DrawRectangleLines(c.rect.x, c.rect.y, c.rect.w, c.rect.h, rl.Beige)
+	}
+
+	for m := 0; m < gme.missilesNo; m++ {
+		largerCircle = newCircleV2(gme.missiles[m].m.pos, 10)
+		potCols = gme.qt.MayCollide(largerCircle)
+		for _, c := range potCols {
+			rl.DrawRectangleLines(c.rect.x, c.rect.y, c.rect.w, c.rect.h, rl.DarkGreen)
+			str := fmt.Sprintf("[%d]", m)
+			rl.DrawText(str, c.rect.x, c.rect.y, 16, rl.Lime)
+		}
+	}
+
+	//fmt.Println("ROCKS", gme.rocksNo, " / Total ", gme.qt.TotalNodes(), " / pot cols", len(potCols))
+
 	gme.drawMissiles()
 	gme.drawParticles()
 	gme.ship.Draw()     // draw ship
@@ -293,6 +326,7 @@ func (g *game) processKeys() {
 	if rl.IsKeyPressed('Q') {
 		g.sm.playM(sMissilesDlvrd)
 		if g.ship.cash > 16 {
+			g.addParticle(newTextPart(g.ship.m.pos, g.ship.m.speed.MulA(0.5), "+20 missiles", 20, 3, rl.Purple, rl.DarkPurple))
 			g.ship.cash -= 16
 			g.ship.missiles += 20
 		}
@@ -321,11 +355,15 @@ func (g *game) processKeys() {
 	}
 	if rl.IsKeyPressed('R') { // reset shields
 		g.sm.play(sOinx)
+		g.ship.m.pos = V2{g.gW / 2, g.gH / 2}
+		g.ship.m.speed = V2{0, 0}
 		g.ship.shields = 100
+		g.ship.energy = 1000
 		g.ship.destroyed = false
 	}
 	if rl.IsKeyPressed('F') { // reset shields
 		if g.ship.energy > 130 && g.ship.shields+13 < 100 {
+			g.addParticle(newTextPart(g.ship.m.pos, g.ship.m.speed.MulA(0.5), "shields +13", 20, 3, rl.Yellow, rl.Gold))
 			g.sm.play(sChargeUp)
 			g.ship.shields += 13
 			g.ship.energy -= 130

@@ -48,11 +48,9 @@ func (s *ship) chargeUp() {
 	if !s.destroyed {
 		dist := V2{1655, 400}.Sub(s.m.pos).Len()
 		chUp := 16 / dist
-		if s.energy < 1000-chUp {
-			s.energy += chUp
-			if s.energy >= 1000 {
-				s.energy = 1000
-			}
+		s.energy += chUp
+		if s.energy > 1000 {
+			s.energy = 1000
 		}
 		if s.shields < 100 {
 			s.shields += 0.001

@@ -25,6 +25,7 @@ func newRockRandom(g *game) *Rock {
 
 	return r
 }
+
 func newRockAt(pos, speed V2) *Rock {
 
 	r := new(Rock)
@@ -36,7 +37,13 @@ func newRockAt(pos, speed V2) *Rock {
 
 	return r
 }
+func (r Rock) bRect() Rect {
+	return Rect{int32(r.m.pos.x - r.radius),
+		int32(r.m.pos.y - r.radius),
+		int32(r.m.pos.x + r.radius),
+		int32(r.m.pos.y + r.radius)}
 
+}
 func (r *Rock) buildShape() {
 	n := 6 + rand.Intn(10) + int(r.radius/5)
 	var step = 360 / float64(n)

@@ -12,9 +12,50 @@ type particle interface {
 	canDelete() bool
 }
 
+type textPart struct {
+	text          string
+	textW         int32
+	size          int32
+	pos, speed    V2
+	life, maxLife uint8
+	sCol, eCol    rl.Color
+}
+
+func newTextPart(pos, speed V2, text string, size int32, duration float64, sCol, eCol rl.Color) *textPart {
+	tp := new(textPart)
+	tp.speed = speed.MulA(0.5)
+	tp.pos = pos
+	tp.text = text
+	tp.textW = rl.MeasureText(text, size) / 2
+	tp.size = size
+	tp.life = uint8(duration * FPS)
+	tp.maxLife = tp.life
+	tp.sCol = sCol
+	tp.eCol = rl.Fade(eCol, 0)
+	return tp
+}
+func (s *textPart) canDelete() bool {
+	if s.life > 0 {
+		return false
+	} else {
+		return true
+	}
+}
+func (tp *textPart) Animate() {
+	tp.pos.Incr(tp.speed)
+	tp.speed.MulA(0.95)
+	if tp.life > 0 {
+		tp.life--
+	}
+}
+func (tp *textPart) Draw() {
+	col := _colorBlend(tp.life, tp.maxLife, tp.sCol, tp.eCol)
+	rl.DrawText(tp.text, int32(tp.pos.x)-tp.textW, int32(tp.pos.y)-tp.size/2, tp.size, col)
+}
+
 type sparks struct {
 	timer, timerMax        int
-	positions, speeds      []V2int
+	positions, speeds      []fxdV2
 	lives, maxlives, seeds []uint8
 	life                   int
 	sparksNo               int
@@ -25,8 +66,8 @@ func newSparks(pos, mspeed V2, count int, maxradius, duration float64, sCol, eCo
 	s := new(sparks)
 	s.sparksNo = count + rand.Intn(count/2)
 	speed := 0.5 + rnd()*1.5
-	s.positions = make([]V2int, s.sparksNo)
-	s.speeds = make([]V2int, s.sparksNo)
+	s.positions = make([]fxdV2, s.sparksNo)
+	s.speeds = make([]fxdV2, s.sparksNo)
 	s.lives = make([]uint8, s.sparksNo)
 	s.maxlives = make([]uint8, s.sparksNo)
 	s.seeds = make([]uint8, s.sparksNo)
@@ -78,13 +119,13 @@ func (s *sparks) Draw() {
 		if s.lives[i] < s.maxlives[i] {
 			if s.lives[i] < s.maxlives[i]/3 {
 				c := _colorBlend(s.lives[i], s.maxlives[i]/3, s.eCol, s.sCol)
-				_rectV2int(s.positions[i], 2, c)
+				_rectFxdV2(s.positions[i], 2, c)
 			} else {
 				t := float32(s.lives[i]-s.maxlives[i]/3) / (float32(s.maxlives[i] / 3 * 2))
 				v := float32(rand.Intn(2))
 				c := rl.ColorFromHSV(t*33, 1.0, v)
 
-				_rectV2int(s.positions[i], 2, c) // I assume this is  faster than circle
+				_rectFxdV2(s.positions[i], 2, c) // I assume this is  faster than circle
 			}
 		}
 	}

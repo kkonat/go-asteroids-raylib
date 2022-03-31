@@ -4,6 +4,12 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
+// TODO
+// for playback/panning https://bitbucket.org/StephenPatrick/go-winaudio/src/master/winaudio/
+//
+// for ogg https://github.com/mccoyst/ogg
+// for mp3 https://github.com/hajimehoshi/go-mp3
+
 const (
 	sSpace = iota
 	sScore

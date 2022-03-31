@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"math/rand"
 	"sync"
 
@@ -124,17 +125,40 @@ func (g *game) deleteRock(r int) {
 var mutex sync.Mutex
 
 type circle struct {
-	p V2
-	r float64
+	rect Rect
+	p    V2
+	r    float64
+}
+
+func (c *circle) bRect() Rect {
+	return c.rect
+}
+
+// func newCircle(x, y, r int) *circle {
+// 	o := new(circle)
+// 	o.p = V2{0, 0}
+// 	o.r = float64(r)
+// 	o.rect.x, o.rect.y = x, y
+// 	o.rect.w, o.rect.h = r/2, r/2
+// 	return o
+// }
+func newCircleV2(p V2, r float64) *circle {
+	o := new(circle)
+	o.p = p
+	o.r = r
+	o.rect.x, o.rect.y = int32(p.x-r), int32(p.y-r)
+	o.rect.w, o.rect.h = int32(r*2), int32(r*2)
+	return o
 }
 
 func (g *game) process_ship_hits() {
 	v := cs(g.ship.m.rot)
 
-	var circles = [...]circle{ // covers ship shape with 3 circles
-		{g.ship.m.pos.Sub(v.MulA(10)), 7},
-		{g.ship.m.pos.Sub(v.MulA(-2)), 5},
-		{g.ship.m.pos.Sub(v.MulA(-10)), 3}}
+	var circles [3]*circle
+
+	circles[0] = newCircleV2(g.ship.m.pos.Sub(v.MulA(10)), 7)
+	circles[1] = newCircleV2(g.ship.m.pos.Add(v.MulA(2)), 5)
+	circles[2] = newCircleV2(g.ship.m.pos.Add(v.MulA(10)), 3)
 
 	// for _, c := range circles {
 	// 	_circle(c.p, c.r, rl.Yellow)
@@ -148,7 +172,7 @@ func (g *game) process_ship_hits() {
 					g.ship.shields -= 0.7
 					g.sm.playFor(sScratch, 80)
 				} else {
-					g.addParticle(newSparks(g.ship.m.pos, g.ship.m.speed, 300, 260, 5, rl.White, rl.DarkBrown))
+					g.addParticle(newSparks(g.ship.m.pos, g.ship.m.speed, 300, 260, 5, rl.White, rl.Red))
 					if !g.ship.destroyed {
 						g.sm.play(sExplodeShip)
 					}
@@ -174,7 +198,10 @@ func (g *game) process_missile_hits() {
 			if dist2 < squared(g.rocks[r].radius+mr) { // hit
 				// explosion vFX
 				distBonus := g.ship.m.pos.Sub(g.rocks[r].m.pos).Len() / 200
-				g.ship.cash += 1 + int(100/g.rocks[r].radius*distBonus/3)
+				score := 1 + int(100/g.rocks[r].radius*distBonus/3)
+				g.ship.cash += score
+				str := fmt.Sprintf("+%d", score)
+				g.addParticle(newTextPart(g.missiles[m].m.pos, g.missiles[m].m.speed, str, 16, 2, rl.Yellow, rl.Red))
 				g.addParticle(newExplosion(g.missiles[m].m.pos, g.missiles[m].m.speed, 30, 0.5))
 				g.addParticle(newSparks(g.missiles[m].m.pos, g.missiles[m].m.speed, 100, 100, 2.0, rl.Orange, rl.Red))
 
