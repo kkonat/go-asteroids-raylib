@@ -9,27 +9,26 @@ var missileShape = []V2{{-1.25, 12.}, {-1.2, 3.12}, {-4.4, 0}, {4.4, 0}, {1.25, 
 //
 
 type missile struct {
-	shape *shape
-	m     *motion
+	*shape
+	motion
 }
 
 func launchMissile(game *game) {
 
 	m := new(missile)
-	m.m = newMotion()
+
 	m.shape = newShape(missileShape)
 
-	m.m.pos = game.ship.m.pos.Add(game.ship.m.speed)
-	spd := V2len(game.ship.m.speed)
-	m.m.rot = game.ship.m.rot
-	m.m.rotM = newM22rot(game.ship.m.rot)
+	m.pos = game.ship.pos.Add(game.ship.speed)
+	spd := V2len(game.ship.speed)
+	m.rot = game.ship.rot
 
-	dir := cs(m.m.rot)
-	m.m.speed = dir.MulA(spd + 2.0)
+	dir := cs(m.rot)
+	m.speed = dir.MulA(spd + 2.0)
 
 	game.missiles = append(game.missiles, m)
 }
 
 func (m missile) Draw() {
-	m.shape.Draw(m.m, rl.Brown, rl.Brown)
+	m.shape.Draw(m.pos, m.rot, rl.Brown, rl.Brown)
 }
