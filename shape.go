@@ -17,21 +17,14 @@ func (m *motion) Move(dt float64) {
 	m.rotM = newM22rot(m.rot)
 }
 
-func newMotion() *motion {
-	m := new(motion)
-	m.rotM = newM22Id()
-	return m
-}
+func newMotion() *motion { return &motion{rotM: newM22Id()} }
 
 type shape struct {
 	points []V2
 }
 
-func newShape(p []V2) *shape {
-	s := new(shape)
-	s.points = p
-	return s
-}
+func newShape(p []V2) *shape { return&shape{points: p} }
+	
 
 func (s *shape) Draw(m *motion, colFill, colLine rl.Color) {
 	var veryfirst, pp V2

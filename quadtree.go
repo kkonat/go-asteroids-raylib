@@ -27,12 +27,7 @@ type QuadTree struct {
 }
 
 func NewQuadTree(pLevel int, pBounds Rect) *QuadTree {
-	q := new(QuadTree)
-	q.Level = pLevel
-	//	q.objects = make([]Obj, 50)
-	q.Bounds = pBounds
-	return q
-
+	return &QuadTree{Level: pLevel, Bounds: pBounds}
 }
 
 func (qt *QuadTree) TotalNodes() int {

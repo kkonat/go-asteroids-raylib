@@ -139,12 +139,10 @@ func (c *circle) bRect() Rect {
 // 	return o
 // }
 func newCircleV2(p V2, r float64) *circle {
-	o := new(circle)
-	o.p = p
-	o.r = r
-	o.rect.x, o.rect.y = int32(p.x-r), int32(p.y-r)
-	o.rect.w, o.rect.h = int32(r*2), int32(r*2)
-	return o
+	return &circle{
+		Rect{int32(p.x - r), int32(p.y - r),
+			int32(r * 2), int32(r * 2)},
+		p, r}
 }
 
 func (g *game) process_ship_hits() {

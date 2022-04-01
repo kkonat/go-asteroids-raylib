@@ -285,7 +285,8 @@ func (g *game) processKeys() {
 	if rl.IsKeyPressed('Q') {
 		if g.ship.cash > 16 {
 			g.sm.playM(sMissilesDlvrd)
-			g.addParticle(newTextPart(g.ship.m.pos, g.ship.m.speed.MulA(0.5), "+20 missiles", 20, 1, 1, true, rl.Purple, rl.DarkPurple))
+			g.addParticle(newTextPart(g.ship.m.pos, g.ship.m.speed.MulA(0.5), 
+			"+20 missiles", 20, 1, 1, true, rl.Purple, rl.DarkPurple))
 			g.ship.cash -= 16
 			g.ship.missiles += 20
 		}
@@ -325,7 +326,8 @@ func (g *game) processKeys() {
 	}
 	if rl.IsKeyPressed('F') { // reset shields
 		if g.ship.energy > 130 && g.ship.shields+13 < 100 {
-			g.addParticle(newTextPart(g.ship.m.pos, g.ship.m.speed.MulA(0.5), "shields +13", 20, 1, 0.5, true, rl.Yellow, rl.Gold))
+			g.addParticle(newTextPart(g.ship.m.pos, g.ship.m.speed.MulA(0.5), 
+			"shields +13", 20, 1, 0.5, true, rl.Yellow, rl.Gold))
 			g.sm.play(sChargeUp)
 			g.ship.shields += 13
 			g.ship.energy -= 130
