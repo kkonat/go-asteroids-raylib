@@ -197,7 +197,7 @@ func (g *game) process_missile_hits() {
 				score := 1 + int(100/r.radius*distBonus/3)
 				g.ship.cash += score
 				str := fmt.Sprintf("+%d", score)
-				g.addParticle(newTextPart(g.missiles[m].m.pos, g.missiles[m].m.speed, str, 16, 2, rl.Yellow, rl.Red))
+				g.addParticle(newTextPart(g.missiles[m].m.pos, g.missiles[m].m.speed, str, 16, 2, 0, false, rl.Yellow, rl.Red))
 				g.addParticle(newExplosion(g.missiles[m].m.pos, g.missiles[m].m.speed, 30, 0.5))
 				g.addParticle(newSparks(g.missiles[m].m.pos, g.missiles[m].m.speed, 100, 100, 2.0, rl.Orange, rl.Red))
 

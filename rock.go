@@ -62,7 +62,7 @@ func (r *Rock) buildShape() {
 }
 
 func (r *Rock) randomize() {
-	r.radius = 10 + rnd()*100
+	r.radius = PrefferredRockSize/10 + rnd()*PrefferredRockSize
 	r.mass = squared(r.radius)
 	//n := 6 + rand.Intn(10) + int(r.radius/5)
 
@@ -197,7 +197,8 @@ func (r *Rock) split(hitat, speed V2, n int) []*Rock {
 	}
 	center := V2{0, 0}
 	for i, r := range newRocks {
-		newRocks[i].mass = squared(newRocks[i].radius)
+		r.radius *= 1.2
+		newRocks[i].mass = squared(r.radius)
 		center.Incr(r.m.pos)
 	}
 	center = center.DivA(float64(len(newRocks)))

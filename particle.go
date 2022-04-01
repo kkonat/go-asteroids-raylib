@@ -15,19 +15,22 @@ type particle interface {
 type textPart struct {
 	text          string
 	textW         int32
-	size          int32
+	size, growSpd float32
 	pos, speed    V2
 	life, maxLife uint8
 	sCol, eCol    rl.Color
 }
 
-func newTextPart(pos, speed V2, text string, size int32, duration float64, sCol, eCol rl.Color) *textPart {
+func newTextPart(pos, speed V2, text string, size int32, duration, growSpd float32, randomDir bool, sCol, eCol rl.Color) *textPart {
 	tp := new(textPart)
 	tp.speed = speed.MulA(0.5)
+	tp.growSpd = growSpd
 	tp.pos = pos
 	tp.text = text
-	tp.textW = rl.MeasureText(text, size) / 2
-	tp.size = size
+	if randomDir {
+		tp.speed = cs(rnd() * 360)
+	}
+	tp.size = float32(size)
 	tp.life = uint8(duration * FPS)
 	tp.maxLife = tp.life
 	tp.sCol = sCol
@@ -44,13 +47,16 @@ func (s *textPart) canDelete() bool {
 func (tp *textPart) Animate() {
 	tp.pos.Incr(tp.speed)
 	tp.speed.MulA(0.95)
+	tp.size += tp.growSpd
 	if tp.life > 0 {
 		tp.life--
 	}
 }
 func (tp *textPart) Draw() {
 	col := _colorBlend(tp.life, tp.maxLife, tp.eCol, tp.sCol) // tp.life goes from 1 to 0, so reverse blend
-	rl.DrawText(tp.text, int32(tp.pos.x)-tp.textW, int32(tp.pos.y)-tp.size/2, tp.size, col)
+	textw := rl.MeasureText(tp.text, int32(tp.size)) / 2
+	rl.DrawText(tp.text, int32(tp.pos.x)-textw, int32(tp.pos.y-float64(tp.size)/2), int32(tp.size), col)
+
 }
 
 type sparks struct {

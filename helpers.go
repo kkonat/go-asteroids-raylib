@@ -124,6 +124,9 @@ func _colorBlendA(t0 float64, col1, col2 rl.Color) rl.Color {
 func rlV2(p V2) rl.Vector2 {
 	return rl.Vector2{X: float32(p.x), Y: float32(p.y)}
 }
+func itoVec2(x, y int32) rl.Vector2 {
+	return rl.Vector2{X: float32(x), Y: float32(y)}
+}
 func min[T constraints.Ordered](a, b T) T {
 	if a < b {
 		return a

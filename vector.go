@@ -9,9 +9,11 @@ import (
 func (m *M22) Mul(v V2) V2 {
 	return M22MulV(*m, v)
 }
+
 type V2 struct {
 	x, y float64
 }
+
 func (v1 *V2) Incr(v2 V2) {
 	v1.x += v2.x
 	v1.y += v2.y
@@ -95,6 +97,7 @@ func newM22rot(alpha float64) M22 {
 	return m
 }
 func cs(alpha float64) V2 {
-	rad := alpha * rl.Deg2rad
-	return V2{-math.Sin(rad), math.Cos(rad)}
+	rad := (alpha + 90) * rl.Deg2rad
+	return V2{math.Cos(rad), math.Sin(rad)}
+	//return V2{-math.Sin(rad), math.Cos(rad)}
 }

@@ -34,8 +34,8 @@ func newShip(posX, posY, mass, fuel float64) *ship {
 	s.shape = newShape(shipShape)
 	s.m = newMotion()
 	s.m.pos.x, s.m.pos.y = posX, posY
-	s.m.rot = rnd() * 360
-	s.m.speed = cs(s.m.rot)
+	// s.m.rot = rnd() * 360
+	// s.m.speed = cs(s.m.rot)
 
 	s.col = rl.White
 	s.mass = mass

@@ -152,7 +152,7 @@ func (sm *soundManager) playFor(idx, cycles int) {
 func (sm *soundManager) playM(idx int) {
 	if !sm.mute {
 		rl.SetSoundVolume(sm.sounds[idx].rlSound, sm.sounds[idx].maxVol)
-		rl.PlaySoundMulti(sm.sounds[idx].rlSound)
+		rl.PlaySound(sm.sounds[idx].rlSound)
 	}
 }
 func (sm *soundManager) playPM(idx int, pitch float32) {

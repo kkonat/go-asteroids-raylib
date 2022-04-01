@@ -2,7 +2,7 @@ package main
 
 // https://gamedevelopment.tutsplus.com/tutorials/quick-tip-use-quadtrees-to-detect-likely-collisions-in-2d-space--gamedev-374
 
-const maxObjects = 5
+const maxObjects = 15
 const maxLevels = 5
 
 type Rect struct {
@@ -14,13 +14,13 @@ func (r1 Rect) equals(r2 Rect) bool {
 	return r1.x == r2.x && r1.y == r2.y && r1.w == r2.w && r1.h == r2.h
 }
 
-type Obj interface {
+type qtObj interface {
 	bRect() Rect
 }
 
 type QuadTree struct {
 	Level   int
-	Objects []*circle
+	Objects []qtObj
 	Bounds  Rect
 	Nodes   [4]*QuadTree
 	Total   int
@@ -80,7 +80,7 @@ const (
 	qDoesntFit   = 5
 )
 
-func (q *QuadTree) getQuadrant(o *circle) int {
+func (q *QuadTree) getQuadrant(o qtObj) int {
 
 	quadrant := qDoesntFit
 
@@ -106,7 +106,7 @@ func (q *QuadTree) getQuadrant(o *circle) int {
 	return quadrant
 }
 
-func (q *QuadTree) Insert(c *circle) {
+func (q *QuadTree) Insert(c qtObj) {
 
 	q.Total++
 
@@ -140,9 +140,9 @@ func (q *QuadTree) Insert(c *circle) {
 	}
 }
 
-func (q *QuadTree) MayCollide(o *circle) []*circle {
+func (q *QuadTree) MayCollide(o qtObj) []qtObj {
 
-	var collidingObjects []*circle
+	var collidingObjects []qtObj
 
 	quadrant := q.getQuadrant(o)
 	if quadrant != qDoesntFit && q.Nodes[0] != nil {
