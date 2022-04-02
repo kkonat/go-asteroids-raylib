@@ -94,6 +94,7 @@ func newGame(w, h int32) *game {
 
 	g := new(game)
 
+	g.missiles = make([]*missile, 0, maxMissiles)
 	g.RocksQt = NewQuadTree[RockListEl](0, Rect{0, 0, w, h})
 	g.initMouse()
 	g.paused = false
@@ -219,16 +220,17 @@ func (gme *game) moveRocks(dt float64) {
 
 	iterator := gme.rocks.Iter()
 	for el, ok := iterator(); ok; el, ok = iterator() {
-		go el.Value.Move(dt)
+		// go el.Value.Move(dt)
+		el.Value.Move(dt)
 	}
-
-	wg.Done()
+	//wg.Done()
 }
 func (gme *game) moveMissiles(dt float64) {
 	for i := range gme.missiles { // move missiles
-		go gme.missiles[i].Move(dt)
+		// go gme.missiles[i].Move(dt)
+		gme.missiles[i].Move(dt)
 	}
-	wg.Done()
+	//wg.Done()
 }
 
 var wg sync.WaitGroup
@@ -256,7 +258,7 @@ func (gme *game) drawAndUpdate() {
 	gme.drawParticles()
 	gme.ship.Draw()
 	gme.drawStatusBar()
-
+	gme.debugQt()
 	rl.EndDrawing()
 
 	gme.sm.doFade() // fade out sounds if needed
@@ -275,12 +277,12 @@ func (gme *game) drawAndUpdate() {
 
 		gme.ship.chargeUp() // chargeup ship
 
-		wg.Add(1) // Waitgroup
+		//wg.Add(1) // Waitgroup
 		gme.moveRocks(dt)
-		wg.Add(1)
+		//wg.Add(1)
 		gme.moveMissiles(dt)
 
-		wg.Wait()
+		//wg.Wait()
 
 		// t0 := time.Now().UnixNano()
 		gme.process_missile_hits()
@@ -288,7 +290,7 @@ func (gme *game) drawAndUpdate() {
 		if !gme.debug {
 			gme.process_ship_hits()
 		}
-		gme.debugQt()
+
 		// t0 = time.Now().UnixNano() - t0
 		// var tmax int64
 		// comps := gme.missilesNo * gme.rocksNo
@@ -298,9 +300,13 @@ func (gme *game) drawAndUpdate() {
 		// }
 		gme.constrainShip()
 
-		go gme.constrainRocks()
-		go gme.constrainMissiles()
-		go gme.animateParticles()
+		// go gme.constrainRocks()
+		// go gme.constrainMissiles()
+		// go gme.animateParticles()
+
+		gme.constrainRocks()
+		gme.constrainMissiles()
+		gme.animateParticles()
 	}
 }
 func (g *game) processKeys() {

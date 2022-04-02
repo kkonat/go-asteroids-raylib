@@ -192,11 +192,11 @@ func (g *game) process_missile_hits() {
 	for r, ok := iterator(); ok; r, ok = iterator() {
 		g.RocksQt.Insert(RockListEl{ListEl[*Rock]{Value: r.Value}})
 	}
-	for m := range g.missiles {
+	for mi, missile := range g.missiles {
 		iterator = g.rocks.Iter()
 		for el, ok := iterator(); ok; el, ok = iterator() {
 			r := el.Value
-			mp := g.missiles[m].pos
+			mp := missile.pos
 			rp := r.pos
 			dist2 := rp.Sub(mp).Len2()
 			if dist2 < squared(r.radius+mr) { // hit
@@ -205,15 +205,15 @@ func (g *game) process_missile_hits() {
 				score := 1 + int(100/r.radius*distBonus/3)
 				g.ship.cash += score
 				str := fmt.Sprintf("+%d", score)
-				g.addParticle(newTextPart(g.missiles[m].pos, g.missiles[m].speed, str, 16, 2, 0, false, rl.Yellow, rl.Red))
-				g.addParticle(newExplosion(g.missiles[m].pos, g.missiles[m].speed, 30, 0.5))
-				g.addParticle(newSparks(g.missiles[m].pos, g.missiles[m].speed, 100, 100, 2.0, rl.Orange, rl.Red))
+				g.addParticle(newTextPart(missile.pos, missile.speed, str, 16, 2, 0, false, rl.Yellow, rl.Red))
+				g.addParticle(newExplosion(missile.pos, missile.speed, 30, 0.5))
+				g.addParticle(newSparks(missile.pos, missile.speed, 100, 100, 2.0, rl.Orange, rl.Red))
 
 				// sound
 				g.sm.playPM(sExpl, 0.5+rnd32())
 
 				// split rock
-				nr := r.split(g.missiles[m].pos, g.missiles[m].speed, 6)
+				nr := r.split(missile.pos, missile.speed, 6)
 
 				// copy new rocks
 				for i := 0; i < len(nr); i++ {
@@ -225,7 +225,7 @@ func (g *game) process_missile_hits() {
 					}
 				}
 				g.rocks.Delete(el)
-				g.deleteMissile(m)
+				g.deleteMissile(mi)
 				break
 			}
 		}
