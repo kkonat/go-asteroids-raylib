@@ -38,57 +38,60 @@ func (g *game) constrainShip() {
 func (g *game) constrainRocks() {
 	const limit = -50 // ordinate to detect rock going off screen / respawn new one
 
-	for i := 0; i < len(g.rocks); i++ {
+	iterator := g.rocks.Iter()
+	for rock, ok := iterator(); ok; rock, ok = iterator() {
+		r := rock.Value
+		// for i := 0; i < len(g.rocks); i++ {	// TOTO: del
 
-		if (g.rocks[i].pos.x+g.rocks[i].radius < limit && g.rocks[i].speed.x < 0) ||
-			(g.rocks[i].pos.x-g.rocks[i].radius > g.gW-limit && g.rocks[i].speed.x > 0) ||
-			(g.rocks[i].pos.y+g.rocks[i].radius < limit && g.rocks[i].speed.y < 0) ||
-			(g.rocks[i].pos.y-g.rocks[i].radius > g.gH-limit && g.rocks[i].speed.y > 0) {
+		if (r.pos.x+r.radius < limit && r.speed.x < 0) ||
+			(r.pos.x-r.radius > g.gW-limit && r.speed.x > 0) ||
+			(r.pos.y+r.radius < limit && r.speed.y < 0) ||
+			(r.pos.y-r.radius > g.gH-limit && r.speed.y > 0) {
 			mutex.Lock()
-			if len(g.rocks) < noPreferredRocks {
+			if g.rocks.Len < noPreferredRocks {
 				// respawn rock in a new sector, first randomly on the screen
-				g.rocks[i].randomize()
-				g.rocks[i].speed = V2{rnd()*rSpeedMax - rSpeedMax/2, rnd()*rSpeedMax - rSpeedMax/2}
-				g.rocks[i].pos = V2{rnd() * g.gW, rnd() * g.gH}
+				r.randomize()
+				r.speed = V2{rnd()*rSpeedMax - rSpeedMax/2, rnd()*rSpeedMax - rSpeedMax/2}
+				r.pos = V2{rnd() * g.gW, rnd() * g.gH}
 
-				p := &g.rocks[i].pos   // these variables addes to make the
-				s := &g.rocks[i].speed // switch statement below more redable
-				r := g.rocks[i].radius   // kind of hack'ish but reads easier
+				p := &r.pos     // these variables addes to make the
+				s := &r.speed   // switch statement below more redable
+				rad := r.radius // kind of hack'ish but reads easier
 
 				sect := rand.Intn(4) // random sector from wchich new rock is to originate
 
 				switch sect { // move the rock off the screen
 				case 0: // left
 					{
-						p.x = -r + limit //
+						p.x = -rad + limit //
 						if s.x < 0 {
 							s.x = -s.x
 						}
 					}
 				case 1: // top
 					{
-						p.y = -r + limit
+						p.y = -rad + limit
 						if s.y < 0 {
 							s.x = -s.x
 						}
 					}
 				case 2: // right
 					{
-						p.x = g.gW + r - limit
+						p.x = g.gW + rad - limit
 						if s.x > 0 {
 							s.x = -s.x
 						}
 					}
 				case 3: // down
 					{
-						p.y = g.gH + r - limit
+						p.y = g.gH + rad - limit
 						if s.y > 0 {
 							s.y = -s.y
 						}
 					}
 				}
 			} else {
-				g.deleteRock(i)
+				g.rocks.Delete(rock)
 			}
 			mutex.Unlock()
 		}
@@ -113,9 +116,6 @@ func (g *game) constrainMissiles() {
 func (g *game) deleteMissile(m int) {
 
 	g.missiles = append(g.missiles[:m], g.missiles[m+1:]...)
-}
-func (g *game) deleteRock(r int) {
-	g.rocks = append(g.rocks[:r], g.rocks[r+1:]...)
 }
 
 var mutex sync.Mutex
@@ -158,7 +158,9 @@ func (g *game) process_ship_hits() {
 	// 	_circle(c.p, c.r, rl.Yellow)
 	// }
 
-	for _, r := range g.rocks {
+	iterator := g.rocks.Iter()
+	for rock, ok := iterator(); ok; rock, ok = iterator() {
+		r := rock.Value
 		for _, c := range circles {
 			dist2 := r.pos.Sub(c.p).Len2()
 			if dist2 < squared(r.radius+c.r) {
@@ -184,8 +186,16 @@ func (g *game) process_ship_hits() {
 
 func (g *game) process_missile_hits() {
 	const mr = 10 // missile radius
-	for i, r := range g.rocks {
-		for m := range g.missiles {
+	g.RocksQt.Clear()
+
+	iterator := g.rocks.Iter()
+	for r, ok := iterator(); ok; r, ok = iterator() {
+		g.RocksQt.Insert(RockListEl{ListEl[*Rock]{Value: r.Value}})
+	}
+	for m := range g.missiles {
+		iterator = g.rocks.Iter()
+		for el, ok := iterator(); ok; el, ok = iterator() {
+			r := el.Value
 			mp := g.missiles[m].pos
 			rp := r.pos
 			dist2 := rp.Sub(mp).Len2()
@@ -203,18 +213,18 @@ func (g *game) process_missile_hits() {
 				g.sm.playPM(sExpl, 0.5+rnd32())
 
 				// split rock
-				nr := g.rocks[i].split(g.missiles[m].pos, g.missiles[m].speed, 6)
+				nr := r.split(g.missiles[m].pos, g.missiles[m].speed, 6)
 
 				// copy new rocks
 				for i := 0; i < len(nr); i++ {
 					if nr[i].radius > 8 {
-						if len(g.rocks) < maxRocks {
-							g.rocks = append(g.rocks, nr[i])
+						if g.rocks.Len < maxRocks {
+							g.rocks.AppendVal(nr[i])
 							nr[i].buildShape()
 						}
 					}
 				}
-				g.deleteRock(i)
+				g.rocks.Delete(el)
 				g.deleteMissile(m)
 				break
 			}

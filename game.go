@@ -32,6 +32,23 @@ const (
 
 var vectorFont rl.Font
 
+// type rqtElem dlElem[*Rock]
+
+// func (e rqtElem) bRect() Rect {
+// 	return e.data.bRect()
+// }
+
+type RockListEl struct {
+	ListEl[*Rock]
+}
+
+func (r RockListEl) bRect() Rect {
+	x := int32(r.ListEl.Value.pos.x)
+	y := int32(r.ListEl.Value.pos.y)
+	rad := int32(r.ListEl.Value.radius)
+	return Rect{x - rad, y - rad, rad * 2, rad * 2}
+}
+
 type game struct {
 	sm   *soundManager
 	sprm *spriteManager
@@ -39,11 +56,12 @@ type game struct {
 	time []float32 // gsls uniform [1]float32
 	ship *ship
 
-	rocks     []*Rock
+	// rocks     []*Rock
+	rocks     List[*Rock]
 	missiles  []*missile
 	particles []particle
 
-	RocksQt *QuadTree
+	RocksQt *QuadTree[RockListEl]
 	//MissilesQt *QuadTree
 
 	sW, sH int32
@@ -76,7 +94,7 @@ func newGame(w, h int32) *game {
 
 	g := new(game)
 
-	g.RocksQt = NewQuadTree(0, Rect{0, 0, w, h})
+	g.RocksQt = NewQuadTree[RockListEl](0, Rect{0, 0, w, h})
 	g.initMouse()
 	g.paused = false
 	g.sW, g.sH = w, h
@@ -181,8 +199,9 @@ func (gme *game) animateParticles() {
 	}
 }
 func (gme *game) drawRocks() {
-	for _, r := range gme.rocks { // draw rocks
-		r.Draw()
+	iterator := gme.rocks.Iter()
+	for el, ok := iterator(); ok; el, ok = iterator() {
+		el.Value.Draw()
 	}
 }
 func (gme *game) drawMissiles() {
@@ -197,9 +216,12 @@ func (gme *game) drawParticles() {
 }
 
 func (gme *game) moveRocks(dt float64) {
-	for i := 0; i < len(gme.rocks); i++ { // move rocks
-		go gme.rocks[i].Move(dt)
+
+	iterator := gme.rocks.Iter()
+	for el, ok := iterator(); ok; el, ok = iterator() {
+		go el.Value.Move(dt)
 	}
+
 	wg.Done()
 }
 func (gme *game) moveMissiles(dt float64) {
@@ -229,8 +251,6 @@ func (gme *game) drawAndUpdate() {
 	gme.sf.draw() // draw starfield
 
 	gme.drawRocks()
-
-	gme.debugQt()
 
 	gme.drawMissiles()
 	gme.drawParticles()
@@ -264,9 +284,11 @@ func (gme *game) drawAndUpdate() {
 
 		// t0 := time.Now().UnixNano()
 		gme.process_missile_hits()
+
 		if !gme.debug {
 			gme.process_ship_hits()
 		}
+		gme.debugQt()
 		// t0 = time.Now().UnixNano() - t0
 		// var tmax int64
 		// comps := gme.missilesNo * gme.rocksNo
@@ -285,8 +307,8 @@ func (g *game) processKeys() {
 	if rl.IsKeyPressed('Q') {
 		if g.ship.cash > 16 {
 			g.sm.playM(sMissilesDlvrd)
-			g.addParticle(newTextPart(g.ship.pos, g.ship.speed.MulA(0.5), 
-			"+20 missiles", 20, 1, 1, true, rl.Purple, rl.DarkPurple))
+			g.addParticle(newTextPart(g.ship.pos, g.ship.speed.MulA(0.5),
+				"+20 missiles", 20, 1, 1, true, rl.Purple, rl.DarkPurple))
 			g.ship.cash -= 16
 			g.ship.missiles += 20
 		}
@@ -326,8 +348,8 @@ func (g *game) processKeys() {
 	}
 	if rl.IsKeyPressed('F') { // reset shields
 		if g.ship.energy > 130 && g.ship.shields+13 < 100 {
-			g.addParticle(newTextPart(g.ship.pos, g.ship.speed.MulA(0.5), 
-			"shields +13", 20, 1, 0.5, true, rl.Yellow, rl.Gold))
+			g.addParticle(newTextPart(g.ship.pos, g.ship.speed.MulA(0.5),
+				"shields +13", 20, 1, 0.5, true, rl.Yellow, rl.Gold))
 			g.sm.play(sChargeUp)
 			g.ship.shields += 13
 			g.ship.energy -= 130
@@ -387,7 +409,7 @@ func (g *game) finalize() {
 }
 
 // -- debug
-func drawQt(qt *QuadTree) {
+func drawQt(qt *QuadTree[RockListEl]) {
 	if len(qt.Objects) != 0 {
 		rl.DrawRectangleLines(qt.Bounds.x+2, qt.Bounds.y+2, qt.Bounds.w-4, qt.Bounds.h-4, rl.DarkGray)
 		str := fmt.Sprintf("#%d", len(qt.Objects))
@@ -403,14 +425,11 @@ func (gme *game) debugQt() {
 	if gme.debug {
 		// str := fmt.Sprintf("[%d,%d]",int32(gme.ship.pos.x),int32(gme.ship.pos.y))
 		// rl.DrawText(str, int32(gme.ship.pos.x),int32(gme.ship.pos.y), 20, rl.Gray)
-		gme.RocksQt.Clear()
-		for _, r := range gme.rocks {
-			gme.RocksQt.Insert(newCircleV2(r.pos, r.radius))
-		}
 
-		largerCircle := newCircleV2(gme.ship.pos, 20)
+		x, y := int32(gme.ship.pos.x), int32(gme.ship.pos.y)
+		shipRect := Rect{x, y, 20, 20}
 
-		potCols := gme.RocksQt.MayCollide(largerCircle)
+		potCols := gme.RocksQt.MayCollide(shipRect)
 		for _, c := range potCols {
 			rl.DrawRectangleLines(c.bRect().x, c.bRect().y, c.bRect().w, c.bRect().h, rl.Beige)
 		}
@@ -419,16 +438,17 @@ func (gme *game) debugQt() {
 		var m runtime.MemStats
 		var line int32 = 16
 		inc := func(l *int32) int32 { *l += 16; return *l }
-
+		str := fmt.Sprintf("rocks len = %v", gme.rocks.Len)
+		rl.DrawText(str, 0, inc(&line), 16, rl.White)
 		runtime.ReadMemStats(&m)
-		str := fmt.Sprintf("Alloc = %v MiB", m.Alloc/1024/1024)
-		rl.DrawText(str, 0, inc(&line), 16, rl.Gray)
-		str = fmt.Sprintf("\tTotalAlloc = %v MiB", m.TotalAlloc/1024/1024)
-		rl.DrawText(str, 0, inc(&line), 16, rl.Gray)
-		str = fmt.Sprintf("\tSys = %v MiB", m.Sys/1024/1024)
-		rl.DrawText(str, 0, inc(&line), 16, rl.Gray)
-		str = fmt.Sprintf("\tNumGC = %v\n", m.NumGC)
-		rl.DrawText(str, 0, inc(&line), 16, rl.Gray)
+		// str := fmt.Sprintf("Alloc = %v MiB", m.Alloc/1024/1024)
+		// rl.DrawText(str, 0, inc(&line), 16, rl.Gray)
+		// str = fmt.Sprintf("\tTotalAlloc = %v MiB", m.TotalAlloc/1024/1024)
+		// rl.DrawText(str, 0, inc(&line), 16, rl.Gray)
+		// str = fmt.Sprintf("\tSys = %v MiB", m.Sys/1024/1024)
+		// rl.DrawText(str, 0, inc(&line), 16, rl.Gray)
+		// str = fmt.Sprintf("\tNumGC = %v\n", m.NumGC)
+		// rl.DrawText(str, 0, inc(&line), 16, rl.Gray)
 
 		drawQt(gme.RocksQt)
 		// for i, missile := range gme.missiles {
@@ -440,8 +460,8 @@ func (gme *game) debugQt() {
 		// 		rl.DrawText(str, c.rect.x+int32(i*16), c.rect.y, 16, rl.Lime)
 		// 	}
 		// }
-		if gme.debug {
-			rl.DrawTextEx(vectorFont, "DEBUG MODE", rl.Vector2{X: float32(720 - rl.MeasureText("DEBUG", 99)), Y: float32(590)}, 99, 0, rl.DarkPurple)
-		}
+
+		rl.DrawTextEx(vectorFont, "DEBUG MODE", rl.Vector2{X: float32(720 - rl.MeasureText("DEBUG", 99)), Y: float32(590)}, 99, 0, rl.DarkPurple)
+
 	}
 }
