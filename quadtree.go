@@ -1,6 +1,6 @@
 package main
 
-const qtMaxObjects = 15
+const qtMaxObjects = 10
 const qtMaxLevels = 5
 
 type Rect struct {
@@ -13,7 +13,7 @@ type qtObj interface {
 }
 type QuadTree[T qtObj] struct {
 	Level   int
-	Objects []qtObj
+	Objects []T
 	Bounds  Rect
 	Nodes   [4]*QuadTree[T]
 	Total   int
@@ -94,7 +94,7 @@ func (q *QuadTree[T]) getQuadrant(r Rect) int {
 	return quadrant
 }
 
-func (q *QuadTree[T]) Insert(obj qtObj) {
+func (q *QuadTree[T]) Insert(obj T) {
 
 	q.Total++
 
@@ -128,16 +128,19 @@ func (q *QuadTree[T]) Insert(obj qtObj) {
 	}
 }
 
-func (q *QuadTree[T]) MayCollide(r Rect) []qtObj {
-
-	var collidingObjects []qtObj
+func (q *QuadTree[T]) MayCollide(r Rect) []T {
 
 	quadrant := q.getQuadrant(r)
-	if quadrant != qDoesntFit && q.Nodes[0] != nil {
-		t := q.Nodes[quadrant].MayCollide(r)
-		collidingObjects = append(collidingObjects, t...)
-	} else {
-		collidingObjects = q.Objects
+	collidingObjects := q.Objects
+	if q.Nodes[0] != nil {
+		if quadrant != qDoesntFit {
+			t := q.Nodes[quadrant].MayCollide(r)
+			collidingObjects = append(collidingObjects, t...)
+		} else {
+			for i := 0; i < 4; i++ {
+				collidingObjects = append(collidingObjects, q.Nodes[i].MayCollide(r)...)
+			}
+		}
 	}
 	return collidingObjects
 }
