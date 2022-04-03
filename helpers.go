@@ -30,6 +30,7 @@ func _initNoise() {
 		j++
 	}
 }
+
 func _noise1D(index uint8) float64 {
 	return noise[index].x
 }

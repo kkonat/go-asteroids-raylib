@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"math/rand"
-	"sync"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
@@ -38,59 +37,63 @@ func (g *game) constrainShip() {
 func (g *game) constrainRocks() {
 	const limit = -50 // ordinate to detect rock going off screen / respawn new one
 
-	for i := 0; i < len(g.rocks); i++ {
+	iterator := g.rocks.Iter()
+	for rock, ok := iterator(); ok; rock, ok = iterator() {
+		r := rock.Value
+		// for i := 0; i < len(g.rocks); i++ {	// TOTO: del
 
-		if (g.rocks[i].pos.x+g.rocks[i].radius < limit && g.rocks[i].speed.x < 0) ||
-			(g.rocks[i].pos.x-g.rocks[i].radius > g.gW-limit && g.rocks[i].speed.x > 0) ||
-			(g.rocks[i].pos.y+g.rocks[i].radius < limit && g.rocks[i].speed.y < 0) ||
-			(g.rocks[i].pos.y-g.rocks[i].radius > g.gH-limit && g.rocks[i].speed.y > 0) {
-			mutex.Lock()
-			if len(g.rocks) < noPreferredRocks {
+		if (r.pos.x+r.radius < limit && r.speed.x < 0) ||
+			(r.pos.x-r.radius > g.gW-limit && r.speed.x > 0) ||
+			(r.pos.y+r.radius < limit && r.speed.y < 0) ||
+			(r.pos.y-r.radius > g.gH-limit && r.speed.y > 0) {
+			if g.rocks.Len < noPreferredRocks {
 				// respawn rock in a new sector, first randomly on the screen
-				g.rocks[i].randomize()
-				g.rocks[i].speed = V2{rnd()*rSpeedMax - rSpeedMax/2, rnd()*rSpeedMax - rSpeedMax/2}
-				g.rocks[i].pos = V2{rnd() * g.gW, rnd() * g.gH}
+				r.randomize()
+				r.speed = V2{rnd()*rSpeedMax - rSpeedMax/2, rnd()*rSpeedMax - rSpeedMax/2}
+				r.pos = V2{rnd() * g.gW, rnd() * g.gH}
 
-				p := &g.rocks[i].pos   // these variables addes to make the
-				s := &g.rocks[i].speed // switch statement below more redable
-				r := g.rocks[i].radius   // kind of hack'ish but reads easier
+				p := &r.pos     // these variables addes to make the
+				s := &r.speed   // switch statement below more redable
+				rad := r.radius // kind of hack'ish but reads easier
 
 				sect := rand.Intn(4) // random sector from wchich new rock is to originate
 
 				switch sect { // move the rock off the screen
 				case 0: // left
 					{
-						p.x = -r + limit //
+						p.x = -rad + limit //
 						if s.x < 0 {
 							s.x = -s.x
 						}
 					}
 				case 1: // top
 					{
-						p.y = -r + limit
+						p.y = -rad + limit
 						if s.y < 0 {
 							s.x = -s.x
 						}
 					}
 				case 2: // right
 					{
-						p.x = g.gW + r - limit
+						p.x = g.gW + rad - limit
 						if s.x > 0 {
 							s.x = -s.x
 						}
 					}
 				case 3: // down
 					{
-						p.y = g.gH + r - limit
+						p.y = g.gH + rad - limit
 						if s.y > 0 {
 							s.y = -s.y
 						}
 					}
 				}
 			} else {
-				g.deleteRock(i)
+				if rock == nil || g.rocks.Len == 0 {
+					panic("delete rock outside")
+				}
+				g.rocks.Delete(rock)
 			}
-			mutex.Unlock()
 		}
 	}
 }
@@ -101,9 +104,9 @@ func (g *game) constrainMissiles() {
 		p := g.missiles[i].pos
 		if p.x <= limit || p.x > g.gW-limit ||
 			p.y <= limit || p.y > g.gH-limit {
-			mutex.Lock()
+
 			g.deleteMissile(i)
-			mutex.Unlock()
+
 		} else {
 			i++
 		}
@@ -111,14 +114,13 @@ func (g *game) constrainMissiles() {
 }
 
 func (g *game) deleteMissile(m int) {
+	if m > len(g.missiles) || m < 0 { // DEBUG
+		panic("will crash here")
+	} else {
+		g.missiles = append(g.missiles[:m], g.missiles[m+1:]...)
+	}
 
-	g.missiles = append(g.missiles[:m], g.missiles[m+1:]...)
 }
-func (g *game) deleteRock(r int) {
-	g.rocks = append(g.rocks[:r], g.rocks[r+1:]...)
-}
-
-var mutex sync.Mutex
 
 type circle struct {
 	rect Rect
@@ -126,9 +128,9 @@ type circle struct {
 	r    float64
 }
 
-func (c *circle) bRect() Rect {
-	return c.rect
-}
+// func (c *circle) bRect() Rect {
+// 	return c.rect
+// }
 
 // func newCircle(x, y, r int) *circle {
 // 	o := new(circle)
@@ -154,11 +156,15 @@ func (g *game) process_ship_hits() {
 	circles[1] = newCircleV2(g.ship.pos.Add(v.MulA(2)), 5)
 	circles[2] = newCircleV2(g.ship.pos.Add(v.MulA(10)), 3)
 
-	// for _, c := range circles {
-	// 	_circle(c.p, c.r, rl.Yellow)
-	// }
+	for _, c := range circles {
+		_circle(c.p, c.r, rl.Yellow)
+	}
 
-	for _, r := range g.rocks {
+	shipBRect := g.ship.shape.bRect
+	potCols := g.RocksQt.MayCollide(shipBRect)
+
+	for _, ro := range potCols {
+		r := ro.Value
 		for _, c := range circles {
 			dist2 := r.pos.Sub(c.p).Len2()
 			if dist2 < squared(r.radius+c.r) {
@@ -166,12 +172,13 @@ func (g *game) process_ship_hits() {
 					g.ship.shields -= 0.7
 					g.sm.playFor(sScratch, 80)
 				} else {
-					g.addParticle(newSparks(g.ship.pos, g.ship.speed, 300, 260, 5, rl.White, rl.Red))
-					if !g.ship.destroyed {
-						g.sm.play(sExplodeShip)
+					if !debug {
+						g.addParticle(newSparks(g.ship.pos, g.ship.speed, 300, 260, 5, rl.White, rl.Red))
+						if !g.ship.destroyed {
+							g.sm.play(sExplodeShip)
+						}
+						g.ship.destroyed = true
 					}
-					g.ship.destroyed = true
-
 					//game_over()
 				}
 			} else {
@@ -184,9 +191,22 @@ func (g *game) process_ship_hits() {
 
 func (g *game) process_missile_hits() {
 	const mr = 10 // missile radius
-	for i, r := range g.rocks {
-		for m := range g.missiles {
-			mp := g.missiles[m].pos
+
+	for mi, missile := range g.missiles {
+		mp := missile.pos
+		//ms := missile.speed.MulA(13)
+		missileBRect := missile.shape.bRect
+		potCols := g.RocksQt.MayCollide(missileBRect)
+		if debug {
+			if degubDrawMissileLines {
+				for _, c := range potCols {
+					_line(mp, c.Value.pos, rl.Red)
+				}
+			}
+		}
+
+		for _, ro := range potCols {
+			r := ro.Value
 			rp := r.pos
 			dist2 := rp.Sub(mp).Len2()
 			if dist2 < squared(r.radius+mr) { // hit
@@ -195,27 +215,33 @@ func (g *game) process_missile_hits() {
 				score := 1 + int(100/r.radius*distBonus/3)
 				g.ship.cash += score
 				str := fmt.Sprintf("+%d", score)
-				g.addParticle(newTextPart(g.missiles[m].pos, g.missiles[m].speed, str, 16, 2, 0, false, rl.Yellow, rl.Red))
-				g.addParticle(newExplosion(g.missiles[m].pos, g.missiles[m].speed, 30, 0.5))
-				g.addParticle(newSparks(g.missiles[m].pos, g.missiles[m].speed, 100, 100, 2.0, rl.Orange, rl.Red))
+				g.addParticle(newTextPart(missile.pos, missile.speed, str, 16, 2, 0, false, rl.Yellow, rl.Red))
+				g.addParticle(newExplosion(missile.pos, missile.speed, 30, 0.5))
+				g.addParticle(newSparks(missile.pos, missile.speed, 100, 100, 2.0, rl.Orange, rl.Red))
 
 				// sound
 				g.sm.playPM(sExpl, 0.5+rnd32())
 
 				// split rock
-				nr := g.rocks[i].split(g.missiles[m].pos, g.missiles[m].speed, 6)
+				nr := r.split(missile.pos, missile.speed, 6)
 
 				// copy new rocks
 				for i := 0; i < len(nr); i++ {
 					if nr[i].radius > 8 {
-						if len(g.rocks) < maxRocks {
-							g.rocks = append(g.rocks, nr[i])
+						if g.rocks.Len < maxRocks {
+							g.rocks.AppendVal(nr[i])
 							nr[i].buildShape()
 						}
 					}
 				}
-				g.deleteRock(i)
-				g.deleteMissile(m)
+
+				g.rocks.Delete(&ro.ListEl)
+
+				if mi >= len(g.missiles) {
+					//panic("bad missile delete")
+				} else {
+					g.deleteMissile(mi)
+				}
 				break
 			}
 		}

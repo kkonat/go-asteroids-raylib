@@ -1,36 +1,29 @@
 package main
 
-// https://gamedevelopment.tutsplus.com/tutorials/quick-tip-use-quadtrees-to-detect-likely-collisions-in-2d-space--gamedev-374
-
-const maxObjects = 15
-const maxLevels = 5
+const qtMaxObjects = 10
+const qtMaxLevels = 5
 
 type Rect struct {
 	x, y int32
 	w, h int32
 }
 
-func (r1 Rect) equals(r2 Rect) bool {
-	return r1.x == r2.x && r1.y == r2.y && r1.w == r2.w && r1.h == r2.h
-}
-
 type qtObj interface {
 	bRect() Rect
 }
-
-type QuadTree struct {
+type QuadTree[T qtObj] struct {
 	Level   int
-	Objects []qtObj
+	Objects []T
 	Bounds  Rect
-	Nodes   [4]*QuadTree
+	Nodes   [4]*QuadTree[T]
 	Total   int
 }
 
-func NewQuadTree(pLevel int, pBounds Rect) *QuadTree {
-	return &QuadTree{Level: pLevel, Bounds: pBounds}
+func NewQuadTree[T qtObj](pLevel int, pBounds Rect) *QuadTree[T] {
+	return &QuadTree[T]{Level: pLevel, Bounds: pBounds}
 }
 
-func (qt *QuadTree) TotalNodes() int {
+func (qt *QuadTree[T]) TotalNodes() int {
 
 	total := 0
 
@@ -44,7 +37,7 @@ func (qt *QuadTree) TotalNodes() int {
 	return total
 
 }
-func (q *QuadTree) Clear() {
+func (q *QuadTree[T]) Clear() {
 
 	q.Objects = nil
 	for i := 0; i < 4; i++ {
@@ -57,14 +50,14 @@ func (q *QuadTree) Clear() {
 	q.Total = 0
 }
 
-func (q *QuadTree) split() {
+func (q *QuadTree[T]) split() {
 	subW, subH := q.Bounds.w/2, q.Bounds.h/2
 	x, y := q.Bounds.x, q.Bounds.y
 
-	q.Nodes[0] = NewQuadTree(q.Level+1, Rect{x, y, subW, subH})
-	q.Nodes[1] = NewQuadTree(q.Level+1, Rect{x + subW, y, subW, subH})
-	q.Nodes[2] = NewQuadTree(q.Level+1, Rect{x, y + subH, subW, subH})
-	q.Nodes[3] = NewQuadTree(q.Level+1, Rect{x + subW, y + subH, subW, subH})
+	q.Nodes[0] = NewQuadTree[T](q.Level+1, Rect{x, y, subW, subH})
+	q.Nodes[1] = NewQuadTree[T](q.Level+1, Rect{x + subW, y, subW, subH})
+	q.Nodes[2] = NewQuadTree[T](q.Level+1, Rect{x, y + subH, subW, subH})
+	q.Nodes[3] = NewQuadTree[T](q.Level+1, Rect{x + subW, y + subH, subW, subH})
 }
 
 const (
@@ -75,23 +68,23 @@ const (
 	qDoesntFit   = 5
 )
 
-func (q *QuadTree) getQuadrant(o qtObj) int {
+func (q *QuadTree[T]) getQuadrant(r Rect) int {
 
 	quadrant := qDoesntFit
 
 	cx := q.Bounds.x + (q.Bounds.w / 2)
 	cy := q.Bounds.y + (q.Bounds.h / 2)
 
-	fitsInTop := (o.bRect().y+o.bRect().h < cy)
-	fitsInBottom := (o.bRect().y > cy)
+	fitsInTop := (r.y+r.h < cy)
+	fitsInBottom := (r.y > cy)
 	// left quadrants
-	if o.bRect().x+o.bRect().w < cx {
+	if r.x+r.w < cx {
 		if fitsInTop {
 			quadrant = qTopLeft
 		} else if fitsInBottom {
 			quadrant = qBottomLeft
 		}
-	} else if o.bRect().x > cx { // right quadrants
+	} else if r.x > cx { // right quadrants
 		if fitsInTop {
 			quadrant = qTopRight
 		} else if fitsInBottom {
@@ -101,28 +94,28 @@ func (q *QuadTree) getQuadrant(o qtObj) int {
 	return quadrant
 }
 
-func (q *QuadTree) Insert(c qtObj) {
+func (q *QuadTree[T]) Insert(obj T) {
 
 	q.Total++
 
 	if q.Nodes[0] != nil {
-		quadrant := q.getQuadrant(c) // see where it fits
+		quadrant := q.getQuadrant(obj.bRect()) // see where it fits
 		if quadrant != qDoesntFit {
-			q.Nodes[quadrant].Insert(c)
+			q.Nodes[quadrant].Insert(obj)
 			return
 		}
 	}
 
-	q.Objects = append(q.Objects, c) // if it doesn't fit into subquadrant add it here
+	q.Objects = append(q.Objects, obj) // if it doesn't fit into subquadrant add it here
 
-	if (len(q.Objects) > maxObjects) && (q.Level < maxLevels) {
+	if (len(q.Objects) > qtMaxObjects) && (q.Level < qtMaxLevels) {
 		if q.Nodes[0] == nil {
 			q.split()
 		}
 
 		i := 0
 		for i < len(q.Objects) {
-			quadrant := q.getQuadrant(q.Objects[i])
+			quadrant := q.getQuadrant(q.Objects[i].bRect())
 			if quadrant != qDoesntFit {
 				objs := q.Objects[i]
 				q.Objects[i] = q.Objects[len(q.Objects)-1] // remove
@@ -135,15 +128,19 @@ func (q *QuadTree) Insert(c qtObj) {
 	}
 }
 
-func (q *QuadTree) MayCollide(o qtObj) []qtObj {
+func (q *QuadTree[T]) MayCollide(r Rect) []T {
 
-	var collidingObjects []qtObj
-
-	quadrant := q.getQuadrant(o)
-	if quadrant != qDoesntFit && q.Nodes[0] != nil {
-		collidingObjects = append(collidingObjects, q.Nodes[quadrant].MayCollide(o)...)
-	} else {
-		collidingObjects = q.Objects
+	quadrant := q.getQuadrant(r)
+	collidingObjects := q.Objects
+	if q.Nodes[0] != nil {
+		if quadrant != qDoesntFit {
+			t := q.Nodes[quadrant].MayCollide(r)
+			collidingObjects = append(collidingObjects, t...)
+		} else {
+			for i := 0; i < 4; i++ {
+				collidingObjects = append(collidingObjects, q.Nodes[i].MayCollide(r)...)
+			}
+		}
 	}
 	return collidingObjects
 }

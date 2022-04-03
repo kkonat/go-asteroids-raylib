@@ -1,11 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"image/color"
 	"math/rand"
-	"runtime"
-	"sync"
 	"time"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -17,7 +14,7 @@ import (
 const (
 	caption            = "test boom boom game"
 	rSpeedMax          = 1
-	noPreferredRocks   = 40
+	noPreferredRocks   = 50
 	PrefferredRockSize = 80
 	maxRocks           = 100
 	maxMissiles        = 50
@@ -31,6 +28,24 @@ const (
 )
 
 var vectorFont rl.Font
+var debug bool
+
+// type rqtElem dlElem[*Rock]
+
+// func (e rqtElem) bRect() Rect {
+// 	return e.data.bRect()
+// }
+
+type RockListEl struct {
+	ListEl[*Rock]
+}
+
+func (r RockListEl) bRect() Rect {
+	x := int32(r.ListEl.Value.pos.x)
+	y := int32(r.ListEl.Value.pos.y)
+	rad := int32(r.ListEl.Value.radius)
+	return Rect{x - rad, y - rad, rad * 2, rad * 2}
+}
 
 type game struct {
 	sm   *soundManager
@@ -39,11 +54,12 @@ type game struct {
 	time []float32 // gsls uniform [1]float32
 	ship *ship
 
-	rocks     []*Rock
+	// rocks     []*Rock
+	rocks     List[*Rock]
 	missiles  []*missile
 	particles []particle
 
-	RocksQt *QuadTree
+	RocksQt *QuadTree[RockListEl]
 	//MissilesQt *QuadTree
 
 	sW, sH int32
@@ -51,7 +67,6 @@ type game struct {
 
 	paused        bool
 	cursorEnabled bool
-	debug         bool
 }
 
 // global time counters
@@ -76,7 +91,8 @@ func newGame(w, h int32) *game {
 
 	g := new(game)
 
-	g.RocksQt = NewQuadTree(0, Rect{0, 0, w, h})
+	g.missiles = make([]*missile, 0, maxMissiles)
+	g.RocksQt = NewQuadTree[RockListEl](0, Rect{0, 0, w, h})
 	g.initMouse()
 	g.paused = false
 	g.sW, g.sH = w, h
@@ -84,14 +100,14 @@ func newGame(w, h int32) *game {
 
 	g.time = make([]float32, 1)
 	g.sf = newStarfield(w, h, g.time)
-	g.debug = startWithDebugOn
+	debug = startWithDebugOn
 	g.sm = newSoundManager(startMuted)
 	g.sprm = newSpriteManager()
 
 	//g.objects = make([]*object, 0, 20)
 
 	g.ship = newShip(float64(w/2), float64(h/2), 1000, 1000)
-
+	g.ship.rot = 45 - 180
 	generateRocks(g, noPreferredRocks)
 
 	tprev = time.Now().Local().UnixMicro()
@@ -181,8 +197,9 @@ func (gme *game) animateParticles() {
 	}
 }
 func (gme *game) drawRocks() {
-	for _, r := range gme.rocks { // draw rocks
-		r.Draw()
+	iterator := gme.rocks.Iter()
+	for el, ok := iterator(); ok; el, ok = iterator() {
+		el.Value.Draw()
 	}
 }
 func (gme *game) drawMissiles() {
@@ -197,19 +214,32 @@ func (gme *game) drawParticles() {
 }
 
 func (gme *game) moveRocks(dt float64) {
-	for i := 0; i < len(gme.rocks); i++ { // move rocks
-		go gme.rocks[i].Move(dt)
+
+	iterator := gme.rocks.Iter()
+	for el, ok := iterator(); ok; el, ok = iterator() {
+		// go el.Value.Move(dt)
+		el.Value.Move(dt)
 	}
-	wg.Done()
+	// wg.Done()
 }
 func (gme *game) moveMissiles(dt float64) {
 	for i := range gme.missiles { // move missiles
-		go gme.missiles[i].Move(dt)
+		// go gme.missiles[i].Move(dt)
+		gme.missiles[i].Move(dt)
 	}
-	wg.Done()
+	// wg.Done()
 }
 
-var wg sync.WaitGroup
+func (gme *game) buildRocksQTree() {
+	gme.RocksQt.Clear()
+
+	iterator := gme.rocks.Iter()
+	for r, ok := iterator(); ok; r, ok = iterator() {
+		gme.RocksQt.Insert(RockListEl{ListEl: *r})
+	}
+}
+
+// var wg sync.WaitGroup
 
 func (gme *game) drawAndUpdate() {
 
@@ -230,13 +260,11 @@ func (gme *game) drawAndUpdate() {
 
 	gme.drawRocks()
 
-	gme.debugQt()
-
 	gme.drawMissiles()
 	gme.drawParticles()
 	gme.ship.Draw()
 	gme.drawStatusBar()
-
+	gme.debugQt()
 	rl.EndDrawing()
 
 	gme.sm.doFade() // fade out sounds if needed
@@ -251,22 +279,25 @@ func (gme *game) drawAndUpdate() {
 
 		gme.time[0] += 0.01 // glsl uniform for starfield shader
 
+		if debug {
+			dt = 1
+		}
 		gme.ship.Move(dt)
 
 		gme.ship.chargeUp() // chargeup ship
 
-		wg.Add(1) // Waitgroup
+		// wg.Add(1) // Waitgroup
 		gme.moveRocks(dt)
-		wg.Add(1)
+		// wg.Add(1)
 		gme.moveMissiles(dt)
-
-		wg.Wait()
+		gme.buildRocksQTree()
+		// wg.Wait()
 
 		// t0 := time.Now().UnixNano()
 		gme.process_missile_hits()
-		if !gme.debug {
-			gme.process_ship_hits()
-		}
+
+		gme.process_ship_hits()
+
 		// t0 = time.Now().UnixNano() - t0
 		// var tmax int64
 		// comps := gme.missilesNo * gme.rocksNo
@@ -276,96 +307,14 @@ func (gme *game) drawAndUpdate() {
 		// }
 		gme.constrainShip()
 
-		go gme.constrainRocks()
-		go gme.constrainMissiles()
-		go gme.animateParticles()
-	}
-}
-func (g *game) processKeys() {
-	if rl.IsKeyPressed('Q') {
-		if g.ship.cash > 16 {
-			g.sm.playM(sMissilesDlvrd)
-			g.addParticle(newTextPart(g.ship.pos, g.ship.speed.MulA(0.5), 
-			"+20 missiles", 20, 1, 1, true, rl.Purple, rl.DarkPurple))
-			g.ship.cash -= 16
-			g.ship.missiles += 20
-		}
-	}
-	if rl.IsKeyPressed('M') {
-		if !g.sm.mute {
-			g.sm.stopAll()
-		}
-		g.sm.mute = !g.sm.mute
+		// go gme.constrainRocks()
+		// go gme.constrainMissiles()
+		// go gme.animateParticles()
 
+		gme.constrainRocks()
+		gme.constrainMissiles()
+		gme.animateParticles()
 	}
-	if rl.IsKeyDown('A') { // rotate left
-		g.ship.rotate(-.2)
-	}
-	if rl.IsKeyPressed('S') { // small thrust
-		g.sm.play(sThrust)
-		g.ship.isSliding = false
-	}
-	if rl.IsKeyDown('S') { // hold thrust
-		g.ship.thrust(0.5)
-	}
-	if rl.IsKeyReleased('S') { // end thrust
-		g.ship.thrust(0)
-		g.ship.isSliding = true
-		g.sm.stop(sThrust)
-	}
-	if rl.IsKeyPressed(rl.KeyF1) { /// debug
-		g.debug = !g.debug
-	}
-	if rl.IsKeyPressed('R') { // reset shields
-		g.sm.play(sOinx)
-		g.ship.pos = V2{g.gW / 2, g.gH / 2}
-		g.ship.speed = V2{0, 0}
-		g.ship.shields = 100
-		g.ship.energy = 1000
-		g.ship.destroyed = false
-	}
-	if rl.IsKeyPressed('F') { // reset shields
-		if g.ship.energy > 130 && g.ship.shields+13 < 100 {
-			g.addParticle(newTextPart(g.ship.pos, g.ship.speed.MulA(0.5), 
-			"shields +13", 20, 1, 0.5, true, rl.Yellow, rl.Gold))
-			g.sm.play(sChargeUp)
-			g.ship.shields += 13
-			g.ship.energy -= 130
-		}
-	}
-	if rl.IsKeyPressed('P') { // pause
-		g.paused = !g.paused
-		g.sm.stopAll()
-	}
-	if rl.IsKeyPressed('W') { // big thrust
-		g.sm.play(sThrust)
-		g.ship.isSliding = false
-	}
-	if rl.IsKeyDown('W') {
-		g.ship.thrust(1.0)
-	}
-	if rl.IsKeyReleased('W') { // -----
-		g.ship.thrust(0)
-		g.ship.isSliding = true
-		g.sm.stop(sThrust)
-	}
-	if rl.IsKeyDown('D') { // rotate right
-		g.ship.rotate(.2)
-	}
-	if rl.IsKeyPressed(rl.KeyLeftControl) { // fire
-		if g.ship.missiles > 0 {
-			g.ship.missiles--
-
-			if len(g.missiles) < maxMissiles {
-				launchMissile(g)
-				g.sm.playM(sLaunch)
-			}
-		}
-	}
-	if rl.IsKeyDown(rl.KeyTab) { // slow down rotation
-		g.ship.rotSpeed *= 0.9
-	}
-
 }
 
 func (g *game) initMouse() {
@@ -384,64 +333,4 @@ func (g *game) finalize() {
 	rl.CloseWindow()
 	g.sm.unloadAll()
 	g.sprm.unloadAll()
-}
-
-// -- debug
-func drawQt(qt *QuadTree) {
-	if len(qt.Objects) != 0 {
-		rl.DrawRectangleLines(qt.Bounds.x+2, qt.Bounds.y+2, qt.Bounds.w-4, qt.Bounds.h-4, rl.DarkGray)
-		str := fmt.Sprintf("#%d", len(qt.Objects))
-		rl.DrawText(str, qt.Bounds.x+2, qt.Bounds.y+20, 16, rl.Gray)
-	}
-	for i := 0; i < 4; i++ {
-		if qt.Nodes[i] != nil {
-			drawQt(qt.Nodes[i])
-		}
-	}
-}
-func (gme *game) debugQt() {
-	if gme.debug {
-		// str := fmt.Sprintf("[%d,%d]",int32(gme.ship.pos.x),int32(gme.ship.pos.y))
-		// rl.DrawText(str, int32(gme.ship.pos.x),int32(gme.ship.pos.y), 20, rl.Gray)
-		gme.RocksQt.Clear()
-		for _, r := range gme.rocks {
-			gme.RocksQt.Insert(newCircleV2(r.pos, r.radius))
-		}
-
-		largerCircle := newCircleV2(gme.ship.pos, 20)
-
-		potCols := gme.RocksQt.MayCollide(largerCircle)
-		for _, c := range potCols {
-			rl.DrawRectangleLines(c.bRect().x, c.bRect().y, c.bRect().w, c.bRect().h, rl.Beige)
-		}
-
-		//printMemoryUsage
-		var m runtime.MemStats
-		var line int32 = 16
-		inc := func(l *int32) int32 { *l += 16; return *l }
-
-		runtime.ReadMemStats(&m)
-		str := fmt.Sprintf("Alloc = %v MiB", m.Alloc/1024/1024)
-		rl.DrawText(str, 0, inc(&line), 16, rl.Gray)
-		str = fmt.Sprintf("\tTotalAlloc = %v MiB", m.TotalAlloc/1024/1024)
-		rl.DrawText(str, 0, inc(&line), 16, rl.Gray)
-		str = fmt.Sprintf("\tSys = %v MiB", m.Sys/1024/1024)
-		rl.DrawText(str, 0, inc(&line), 16, rl.Gray)
-		str = fmt.Sprintf("\tNumGC = %v\n", m.NumGC)
-		rl.DrawText(str, 0, inc(&line), 16, rl.Gray)
-
-		drawQt(gme.RocksQt)
-		// for i, missile := range gme.missiles {
-		// 	largerCircle = newCircleV2(missile.pos, 10)
-		// 	potCols = gme.qt.MayCollide(largerCircle)
-		// 	for _, c := range potCols {
-		// 		rl.DrawRectangleLines(c.rect.x, c.rect.y, c.rect.w, c.rect.h, rl.DarkGreen)
-		// 		str := fmt.Sprintf("[%d]", i)
-		// 		rl.DrawText(str, c.rect.x+int32(i*16), c.rect.y, 16, rl.Lime)
-		// 	}
-		// }
-		if gme.debug {
-			rl.DrawTextEx(vectorFont, "DEBUG MODE", rl.Vector2{X: float32(720 - rl.MeasureText("DEBUG", 99)), Y: float32(590)}, 99, 0, rl.DarkPurple)
-		}
-	}
 }
