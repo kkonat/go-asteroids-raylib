@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"image/color"
+	"log"
 	"math/rand"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -128,37 +130,60 @@ type circle struct {
 	r    float64
 }
 
-// func (c *circle) bRect() Rect {
-// 	return c.rect
-// }
-
-// func newCircle(x, y, r int) *circle {
-// 	o := new(circle)
-// 	o.p = V2{0, 0}
-// 	o.r = float64(r)
-// 	o.rect.x, o.rect.y = x, y
-// 	o.rect.w, o.rect.h = r/2, r/2
-// 	return o
-// }
 func newCircleV2(p V2, r float64) *circle {
 	return &circle{
 		Rect{int32(p.x - r), int32(p.y - r),
 			int32(r * 2), int32(r * 2)},
 		p, r}
 }
+func (g *game) processForceField() {
+	const forceFieldRadius = 150
+	//shipBRect := g.ship.shape.bRect
+	//potCols := g.RocksQt.MayCollide(shipBRect)
+	dSpeed := V2{0, 0}
 
-func (g *game) process_ship_hits() {
+	iterator := g.rocks.Iter()
+	for r, ok := iterator(); ok; r, ok = iterator() {
+		g.RocksQt.Insert(RockListEl{ListEl: *r})
+		// }
+
+		// for _, ro := range potCols {
+
+		r := r.Value
+
+		v := g.ship.pos.Sub(r.pos)
+		dist := v.Len() - r.radius
+		if dist < forceFieldRadius {
+			dSpeed.Incr(v.Norm().MulA(1000).DivA(dist + 0.1))
+			disturb := _noise2D(g.ship.cycle)
+			_lineThick(g.ship.pos, r.pos, 30, rl.Fade(rl.Blue, float32(disturb.x)*0.8))
+		}
+		c := uint8(0)
+		for a := float64(20) * rnd(); a < 360; a += 20 + 40*rnd() {
+			p := cs(a).MulA(float64(forceFieldRadius) * rnd())
+			_lineThick(g.ship.pos, g.ship.pos.Add(p), 30, rl.Fade(color.RGBA{0, 200, 200, 255}, float32(_noise1D(c))*0.2))
+			c++
+		}
+	}
+	d := dSpeed.MulA(.001)
+	ss := g.ship.speed.Len()
+	d = d.DivA(ss + 0.1)
+	g.ship.speed.Incr(d)
+	//rl.DrawCircleGradient(int32(g.ship.pos.x), int32(g.ship.pos.y), forceFieldRadius, rl.Fade(rl.Blue, 0.7), rl.Fade(rl.Blue, 0.2))
+}
+
+func (g *game) processShipHits() {
 	v := cs(g.ship.rot)
 
 	var circles [3]*circle
 
-	circles[0] = newCircleV2(g.ship.pos.Sub(v.MulA(10)), 7)
-	circles[1] = newCircleV2(g.ship.pos.Add(v.MulA(2)), 5)
-	circles[2] = newCircleV2(g.ship.pos.Add(v.MulA(10)), 3)
+	circles[0] = newCircleV2(g.ship.pos.Sub(v.MulA(10)), 8)
+	circles[1] = newCircleV2(g.ship.pos.Add(v.MulA(2)), 6)
+	circles[2] = newCircleV2(g.ship.pos.Add(v.MulA(10)), 4)
 
-	for _, c := range circles {
-		_circle(c.p, c.r, rl.Yellow)
-	}
+	// for _, c := range circles {
+	// 	_circle(c.p, c.r, rl.Yellow)
+	// }
 
 	shipBRect := g.ship.shape.bRect
 	potCols := g.RocksQt.MayCollide(shipBRect)
@@ -168,6 +193,7 @@ func (g *game) process_ship_hits() {
 		for _, c := range circles {
 			dist2 := r.pos.Sub(c.p).Len2()
 			if dist2 < squared(r.radius+c.r) {
+				// _disc(c.p, c.r, rl.Red)
 				if g.ship.shields > 0.7 {
 					g.ship.shields -= 0.7
 					g.sm.playFor(sScratch, 80)
@@ -189,7 +215,7 @@ func (g *game) process_ship_hits() {
 	}
 }
 
-func (g *game) process_missile_hits() {
+func (g *game) processMissileHits() {
 	const mr = 10 // missile radius
 
 	for mi, missile := range g.missiles {
@@ -238,7 +264,7 @@ func (g *game) process_missile_hits() {
 				g.rocks.Delete(&ro.ListEl)
 
 				if mi >= len(g.missiles) {
-					//panic("bad missile delete")
+					log.Print("bad missile delete")
 				} else {
 					g.deleteMissile(mi)
 				}

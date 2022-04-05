@@ -1,8 +1,12 @@
 package main
 
 import (
+	"fmt"
+
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
+
+var ms rl.Music
 
 func main() {
 	// By default, Go programs run with GOMAXPROCS set to the number
@@ -29,13 +33,15 @@ func main() {
 		game.drawAndUpdate()
 
 	}
+
+	rl.UnloadMusicStream(ms)
 	game.finalize()
 }
 
 func (g *game) processKeys() {
 	if rl.IsKeyPressed('Q') {
 		if g.ship.cash > 16 {
-			g.sm.playM(sMissilesDlvrd)
+			g.sm.play(sMissilesDlvrd)
 			g.addParticle(newTextPart(g.ship.pos, g.ship.speed.MulA(0.5),
 				"+20 missiles", 20, 1, 1, true, rl.Purple, rl.DarkPurple))
 			g.ship.cash -= 16
@@ -64,6 +70,36 @@ func (g *game) processKeys() {
 		g.ship.isSliding = true
 		g.sm.stop(sThrust)
 	}
+	if rl.IsKeyPressed(';') { //forceField
+
+		g.ship.forceField = true
+		g.sm.play(sForceField)
+	}
+	if rl.IsKeyDown(';') {
+		if g.ship.energy > 0 {
+			g.ship.energy -= 0.1
+		}
+	}
+	if rl.IsKeyReleased(';') { // hold thrust
+		g.ship.forceField = false
+		g.sm.stop(sForceField)
+	}
+	if rl.IsKeyPressed('L') {
+		g.weapon++
+		g.weapon %= maxWeapons
+		str := fmt.Sprintf(">%s<", weapons[g.weapon])
+		g.addParticle(newTextPart(g.ship.pos, g.ship.speed.MulA(0.5),
+			str, 20, 1, 1, true, rl.Purple, rl.Red))
+	} // cycle weapon left
+	if rl.IsKeyPressed('\'') {
+		g.weapon++
+		g.weapon %= maxWeapons
+		str := fmt.Sprintf(">%s<", weapons[g.weapon])
+		g.addParticle(newTextPart(g.ship.pos, g.ship.speed.MulA(0.5),
+			str, 20, 1, 1, true, rl.Purple, rl.Red))
+
+	} // cycle weapon right
+
 	if rl.IsKeyPressed(rl.KeyF1) { /// debug
 		debug = !debug
 	}
@@ -109,7 +145,7 @@ func (g *game) processKeys() {
 
 			if len(g.missiles) < maxMissiles {
 				launchMissile(g)
-				g.sm.playM(sLaunch)
+				g.sm.play(sLaunch)
 			}
 		}
 	}

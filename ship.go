@@ -16,6 +16,7 @@ type ship struct {
 	col       rl.Color
 	isSliding bool
 	cycle     uint8
+	forceField bool
 	destroyed bool
 }
 

@@ -125,13 +125,23 @@ func (q *QuadTree[T]) Insert(obj T) {
 				i++
 			}
 		}
+
 	}
 }
 
 func (q *QuadTree[T]) MayCollide(r Rect) []T {
-
+	const (
+		minDist2 = PrefferredRockSize * PrefferredRockSize * 16
+	)
 	quadrant := q.getQuadrant(r)
-	collidingObjects := q.Objects
+	//collidingObjects := q.Objects
+	collidingObjects := []T{}
+	for _, o := range q.Objects {
+		dist2 := (o.bRect().x-r.x)*(o.bRect().x-r.x) + (o.bRect().y-r.y)*(o.bRect().y-r.y)
+		if dist2 < minDist2 {
+			collidingObjects = append(collidingObjects, o)
+		}
+	}
 	if q.Nodes[0] != nil {
 		if quadrant != qDoesntFit {
 			t := q.Nodes[quadrant].MayCollide(r)

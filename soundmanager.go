@@ -23,6 +23,7 @@ const (
 	sExplodeShip
 	sScratch
 	sChargeUp
+	sForceField
 )
 
 var soundFiles = map[int]struct {
@@ -37,11 +38,12 @@ var soundFiles = map[int]struct {
 	sExpl:          {"res/expl.ogg", 0.5, 0.65},
 	sLaunch:        {"res/launch.ogg", 0.5, 1.0},
 	sShieldsLow:    {"res/warning-shields-low.ogg", 0.3, 1.0},
-	sAmmoLow:       {"res/warning-ammo-low.ogg", 0.3, 1.0},
+	sAmmoLow:       {"res/warning-ammo-low.ogg", 0.3, 1.0},	
 	sOinx:          {"res/oinxL.ogg", 0.5, 1.0},
 	sExplodeShip:   {"res/shipexplode.ogg", 1.0, 1.0},
 	sScratch:       {"res/metalScratch.ogg", 0.2, 1.0},
 	sChargeUp:      {"res/chargeup.ogg", 0.2, 1.0},
+	sForceField:    {"res/forcefield2.ogg", 0.5, 1.0},
 }
 
 type sound struct {
@@ -152,7 +154,7 @@ func (sm *soundManager) playFor(idx, cycles int) {
 func (sm *soundManager) playM(idx int) {
 	if !sm.mute {
 		rl.SetSoundVolume(sm.sounds[idx].rlSound, sm.sounds[idx].maxVol)
-		rl.PlaySound(sm.sounds[idx].rlSound)
+		rl.PlaySoundMulti(sm.sounds[idx].rlSound)
 	}
 }
 func (sm *soundManager) playPM(idx int, pitch float32) {

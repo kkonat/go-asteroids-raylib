@@ -23,8 +23,10 @@ const (
 	shieldsLowLimit    = 25
 	ammoLowLimit       = 20
 
-	startWithDebugOn = true
-	startMuted       = true
+	startWithDebugOn = false
+	startMuted       = false
+
+	maxWeapons = 3
 )
 
 var vectorFont rl.Font
@@ -67,7 +69,11 @@ type game struct {
 
 	paused        bool
 	cursorEnabled bool
+	weapon        int
+	weapons       map[int]string
 }
+
+var weapons = [...]string{"missile", "seeking missile", "laser"}
 
 // global time counters
 var tnow, tprev, mAmmoLastPlayed, mShieldsLastPlayed int64
@@ -294,9 +300,12 @@ func (gme *game) drawAndUpdate() {
 		// wg.Wait()
 
 		// t0 := time.Now().UnixNano()
-		gme.process_missile_hits()
+		gme.processMissileHits()
+		if gme.ship.forceField {
+			gme.processForceField()
+		}
 
-		gme.process_ship_hits()
+		gme.processShipHits()
 
 		// t0 = time.Now().UnixNano() - t0
 		// var tmax int64
