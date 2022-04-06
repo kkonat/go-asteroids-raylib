@@ -7,17 +7,16 @@ import (
 type ship struct {
 	shape *shape
 	motion
-	thr       V2
-	mass      float64
-	energy    float64
-	shields   float64
-	missiles  int
-	cash      int
-	col       rl.Color
-	isSliding bool
-	cycle     uint8
+	thr        V2
+	mass       float64
+	energy     float64
+	shields    float64
+	cash       int
+	col        rl.Color
+	isSliding  bool
+	cycle      uint8
 	forceField bool
-	destroyed bool
+	destroyed  bool
 }
 
 const S = 16
@@ -28,7 +27,6 @@ func newShip(posX, posY, mass, fuel float64) *ship {
 
 	s := new(ship)
 	s.shields = 100
-	s.missiles = 100
 	s.energy = 1000
 
 	s.destroyed = false

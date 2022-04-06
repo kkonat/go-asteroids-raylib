@@ -136,10 +136,10 @@ func (q *QuadTree[T]) MayCollide(r Rect) []T {
 	quadrant := q.getQuadrant(r)
 	//collidingObjects := q.Objects
 	collidingObjects := []T{}
-	for _, o := range q.Objects {
+	for i, o := range q.Objects {
 		dist2 := (o.bRect().x-r.x)*(o.bRect().x-r.x) + (o.bRect().y-r.y)*(o.bRect().y-r.y)
 		if dist2 < minDist2 {
-			collidingObjects = append(collidingObjects, o)
+			collidingObjects = append(collidingObjects, q.Objects[i])
 		}
 	}
 	if q.Nodes[0] != nil {

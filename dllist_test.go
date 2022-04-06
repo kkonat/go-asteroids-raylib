@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -22,30 +23,30 @@ func TestDll(t *testing.T) {
 		t.Error("dl.Head.Prev != nil || dl.Head.Next !=nil")
 	}
 	el := dl.Head
-	dl.Delete(el)
+	dl.Delete(&el)
 	if dl.Head != nil || dl.Tail != nil {
 		t.Error("dl.Head != nil || dl.Tail != nil")
 	}
-	if dl.Delete(el) != false {
+	if dl.Delete(&el) != false {
 		t.Error("empty list delete")
 	}
 
 	e1 := dl.AppendVal(1)
 	e2 := dl.AppendVal(2)
 
-	if !dl.Delete(e2) {
+	if !dl.Delete(&e2) {
 		t.Error("2nd el delet unsuccesfull")
 	}
 	e2 = dl.AppendVal(2)
-	if !dl.Delete(dl.Tail) {
+	if !dl.Delete(&dl.Tail) {
 		t.Error("Tail delete unsuccesfull")
 	}
 	e2 = dl.AppendVal(2)
 
-	if !dl.Delete(e1) {
+	if !dl.Delete(&e1) {
 		t.Error("1st el delet unsuccesfull")
 	}
-	if !dl.Delete(e2) {
+	if !dl.Delete(&e2) {
 		t.Error("2nd el delet unsuccesfull")
 	}
 	if dl.Head != nil || dl.Tail != nil {
@@ -60,7 +61,7 @@ func TestDll(t *testing.T) {
 	if dl.Len != 3 {
 		t.Error("dll.len != 3")
 	}
-	if !dl.Delete(e2) {
+	if !dl.Delete(&e2) {
 		t.Error("2nd el delet unsuccesfull")
 	}
 	if dl.Head.Next != dl.Tail || dl.Tail.Prev != dl.Head {
@@ -82,7 +83,7 @@ func TestDll(t *testing.T) {
 	if dl.Len != 5 {
 		t.Error("dll.len != 5")
 	}
-	dl.Delete(el)
+	dl.Delete(&el)
 	dl.Clear()
 	dl.AppendVal(1)
 	dl.AppendVal(2)
@@ -99,6 +100,41 @@ func TestDll(t *testing.T) {
 			}
 			idx++
 		}
+	}
+}
+func Test2Dll(t *testing.T) {
+	list := List[*int]{}
+	v1 := 1
+	v2 := 2
+	v3 := 3
+	v4 := 4
+	el1 := list.AppendVal(&v1)
+	el2 := list.AppendVal(&v2)
+	el3 := list.AppendVal(&v3)
+	el4 := list.AppendVal(&v4)
+	fmt.Printf("1.%p %#v\n", el1, el1)
+	fmt.Printf("2.%p %#v\n", el2, el2)
+	fmt.Printf("2.%p %#v\n", el3, el3)
+	fmt.Printf("3.%p %#v\n\n", el4, el4)
+	list.Delete(&el2)
+	fmt.Printf("1.%p %#v\n", el1, el1)
+	fmt.Printf("2.%p %#v\n", el2, el2)
+	fmt.Printf("2.%p %#v\n", el3, el3)
+	fmt.Printf("3.%p %#v\n\n", el4, el4)
+	iterator := list.Iter()
+	idx := 1
+	for el, ok := iterator(); ok; el, ok = iterator() {
+		//fmt.Printf("1.%p %#v\n", el, el)
+		fmt.Printf("%d.%p %#v\n", idx, el, el)
+		idx++
+	}
+	list.Delete(&el3)
+	iterator = list.Iter()
+	idx = 1
+	for el, ok := iterator(); ok; el, ok = iterator() {
+		//fmt.Printf("1.%p %#v\n", el, el)
+		fmt.Printf("%d.%p %#v\n", idx, el, el)
+		idx++
 	}
 
 }

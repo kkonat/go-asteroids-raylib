@@ -40,10 +40,10 @@ func (g *game) constrainRocks() {
 	const limit = -50 // ordinate to detect rock going off screen / respawn new one
 
 	iterator := g.rocks.Iter()
+	var count int
 	for rock, ok := iterator(); ok; rock, ok = iterator() {
+		count++
 		r := rock.Value
-		// for i := 0; i < len(g.rocks); i++ {	// TOTO: del
-
 		if (r.pos.x+r.radius < limit && r.speed.x < 0) ||
 			(r.pos.x-r.radius > g.gW-limit && r.speed.x > 0) ||
 			(r.pos.y+r.radius < limit && r.speed.y < 0) ||
@@ -98,12 +98,13 @@ func (g *game) constrainRocks() {
 			}
 		}
 	}
+	fmt.Println("Rock count:", count, " rocklist len=", g.rocks.Len)
 }
 func (g *game) constrainMissiles() {
 	const limit = -10
 	var i int
 	for i < len(g.missiles) {
-		p := g.missiles[i].pos
+		p := g.missiles[i].getData().pos
 		if p.x <= limit || p.x > g.gW-limit ||
 			p.y <= limit || p.y > g.gH-limit {
 
@@ -117,7 +118,7 @@ func (g *game) constrainMissiles() {
 
 func (g *game) deleteMissile(m int) {
 	if m > len(g.missiles) || m < 0 { // DEBUG
-		panic("will crash here")
+		log.Print("bad missile delete ")
 	} else {
 		g.missiles = append(g.missiles[:m], g.missiles[m+1:]...)
 	}
@@ -136,40 +137,44 @@ func newCircleV2(p V2, r float64) *circle {
 			int32(r * 2), int32(r * 2)},
 		p, r}
 }
-func (g *game) processForceField() {
-	const forceFieldRadius = 150
-	//shipBRect := g.ship.shape.bRect
-	//potCols := g.RocksQt.MayCollide(shipBRect)
-	dSpeed := V2{0, 0}
-
-	iterator := g.rocks.Iter()
-	for r, ok := iterator(); ok; r, ok = iterator() {
-		g.RocksQt.Insert(RockListEl{ListEl: *r})
-		// }
-
-		// for _, ro := range potCols {
-
-		r := r.Value
-
-		v := g.ship.pos.Sub(r.pos)
-		dist := v.Len() - r.radius
-		if dist < forceFieldRadius {
-			dSpeed.Incr(v.Norm().MulA(1000).DivA(dist + 0.1))
-			disturb := _noise2D(g.ship.cycle)
-			_lineThick(g.ship.pos, r.pos, 30, rl.Fade(rl.Blue, float32(disturb.x)*0.8))
-		}
+func (g *game) drawForceField() {
+	if g.ship.forceField {
 		c := uint8(0)
-		for a := float64(20) * rnd(); a < 360; a += 20 + 40*rnd() {
+		_circleGradient(g.ship.pos, forceFieldRadius,
+			rl.Fade(color.RGBA{0, 200, 200, 255}, 0.25),
+			rl.Fade(color.RGBA{0, 240, 200, 255}, 0.0))
+		for a := float64(10) * rnd(); a < 360+float64(10)*rnd(); a += 1 + 10*rnd() {
 			p := cs(a).MulA(float64(forceFieldRadius) * rnd())
-			_lineThick(g.ship.pos, g.ship.pos.Add(p), 30, rl.Fade(color.RGBA{0, 200, 200, 255}, float32(_noise1D(c))*0.2))
+			_lineThick(g.ship.pos, g.ship.pos.Add(p), rand.Float32()*20+10,
+				rl.Fade(color.RGBA{0, 100, 100, 127}, 0.05))
 			c++
 		}
 	}
-	d := dSpeed.MulA(.001)
-	ss := g.ship.speed.Len()
-	d = d.DivA(ss + 0.1)
-	g.ship.speed.Incr(d)
-	//rl.DrawCircleGradient(int32(g.ship.pos.x), int32(g.ship.pos.y), forceFieldRadius, rl.Fade(rl.Blue, 0.7), rl.Fade(rl.Blue, 0.2))
+}
+func (g *game) processForceField() {
+
+	if g.ship.forceField {
+		dSpeed := V2{0, 0}
+
+		iterator := g.rocks.Iter()
+		for r, ok := iterator(); ok; r, ok = iterator() {
+			rock := r.Value
+			v := g.ship.pos.Sub(rock.pos)
+			dist := v.Len() - rock.radius
+			if dist < forceFieldRadius {
+				dSpeed.Incr(v.Norm().MulA(2000).DivA(dist + 0.01))
+			}
+		}
+		d := dSpeed.MulA(.001)
+		ss := g.ship.speed.Len()
+		d = d.DivA(ss + 0.1)
+		v := d.Len()
+		if v > 0.05 { // limit bounce speed
+			v = v - 0.05
+			d = d.Norm().MulA(v)
+		}
+		g.ship.speed.Incr(d)
+	}
 }
 
 func (g *game) processShipHits() {
@@ -186,8 +191,9 @@ func (g *game) processShipHits() {
 	// }
 
 	shipBRect := g.ship.shape.bRect
+	g.RocksQtMutex.RLock()
 	potCols := g.RocksQt.MayCollide(shipBRect)
-
+	g.RocksQtMutex.RUnlock()
 	for _, ro := range potCols {
 		r := ro.Value
 		for _, c := range circles {
@@ -217,12 +223,20 @@ func (g *game) processShipHits() {
 
 func (g *game) processMissileHits() {
 	const mr = 10 // missile radius
+	var hit bool
 
-	for mi, missile := range g.missiles {
-		mp := missile.pos
+	mi := 0
+	for mi < len(g.missiles) {
+		missile := g.missiles[mi]
+
+		mp := missile.getData().pos
 		//ms := missile.speed.MulA(13)
-		missileBRect := missile.shape.bRect
+		missileBRect := missile.getData().shape.bRect
+
+		g.RocksQtMutex.RLock()
 		potCols := g.RocksQt.MayCollide(missileBRect)
+		g.RocksQtMutex.RUnlock()
+
 		if debug {
 			if degubDrawMissileLines {
 				for _, c := range potCols {
@@ -231,7 +245,9 @@ func (g *game) processMissileHits() {
 			}
 		}
 
-		for _, ro := range potCols {
+		hit = false
+		for i := range potCols {
+			ro := potCols[i]
 			r := ro.Value
 			rp := r.pos
 			dist2 := rp.Sub(mp).Len2()
@@ -241,15 +257,15 @@ func (g *game) processMissileHits() {
 				score := 1 + int(100/r.radius*distBonus/3)
 				g.ship.cash += score
 				str := fmt.Sprintf("+%d", score)
-				g.addParticle(newTextPart(missile.pos, missile.speed, str, 16, 2, 0, false, rl.Yellow, rl.Red))
-				g.addParticle(newExplosion(missile.pos, missile.speed, 30, 0.5))
-				g.addParticle(newSparks(missile.pos, missile.speed, 100, 100, 2.0, rl.Orange, rl.Red))
+				g.addParticle(newTextPart(missile.getData().pos, missile.getData().speed, str, 16, 2, 0, false, rl.Yellow, rl.Red))
+				g.addParticle(newExplosion(missile.getData().pos, missile.getData().speed, 30, 0.5))
+				g.addParticle(newSparks(missile.getData().pos, missile.getData().speed, 100, 100, 2.0, rl.Orange, rl.Red))
 
 				// sound
 				g.sm.playPM(sExpl, 0.5+rnd32())
 
 				// split rock
-				nr := r.split(missile.pos, missile.speed, 6)
+				nr := r.split(missile.getData().pos, missile.getData().speed, 6)
 
 				// copy new rocks
 				for i := 0; i < len(nr); i++ {
@@ -261,15 +277,14 @@ func (g *game) processMissileHits() {
 					}
 				}
 
-				g.rocks.Delete(&ro.ListEl)
-
-				if mi >= len(g.missiles) {
-					log.Print("bad missile delete")
-				} else {
-					g.deleteMissile(mi)
-				}
+				g.rocks.Delete(&potCols[i].ListEl)
+				g.deleteMissile(mi)
+				hit = true
 				break
 			}
+		}
+		if !hit {
+			mi++
 		}
 	}
 }

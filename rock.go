@@ -3,6 +3,7 @@ package main
 import (
 	"math"
 	"math/rand"
+	"sync"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
@@ -13,7 +14,35 @@ type Rock struct {
 	radius float64
 	mass   float64
 }
+type RockListEl struct {
+	ListEl[*Rock]
+}
 
+func (r RockListEl) bRect() Rect {
+	x := int32(r.ListEl.Value.pos.x)
+	y := int32(r.ListEl.Value.pos.y)
+	rad := int32(r.ListEl.Value.radius)
+	return Rect{x - rad, y - rad, rad * 2, rad * 2}
+}
+
+type RockList struct {
+	List[*Rock]
+	mutex sync.RWMutex
+}
+
+func (rl *RockList) Delete(el *ListEl[*Rock]) bool {
+	rl.mutex.Lock()
+	defer rl.mutex.Unlock()
+	return rl.List.Delete(&el)
+
+}
+
+func (rl *RockList) Iter() func() (*ListEl[*Rock], bool) {
+	rl.mutex.RLock()
+	defer rl.mutex.RUnlock()
+	retv := rl.List.Iter()
+	return retv
+}
 func newRockRandom(g *game) *Rock {
 
 	r := new(Rock)
@@ -62,7 +91,6 @@ func (r *Rock) randomize() {
 	r.buildShape()
 
 	r.rotSpeed = rnd()*1.5 - 0.75
-
 }
 
 func generateRocks(g *game, preferredRocks int) {
@@ -84,7 +112,9 @@ func generateRocks(g *game, preferredRocks int) {
 
 }
 func (r *Rock) Draw() {
+
 	r.shape.DrawThin(r.pos, r.rot, rl.Black, rl.DarkGray, 0.75)
+
 }
 
 func touches(which int, allRocks []*Rock) (bool, int) {

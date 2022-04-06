@@ -12,7 +12,7 @@ const (
 	debugMemstats         = true
 	debugRocksQt          = false
 	debugShipPos          = false
-	degubDrawMissileLines = true
+	degubDrawMissileLines = false
 )
 
 // -- debug
@@ -36,9 +36,11 @@ func (gme *game) debugQt() {
 		}
 
 		if debugRocksQt {
+			gme.RocksQtMutex.RLock()
 			potCols := gme.RocksQt.MayCollide(gme.ship.shape.bRect)
+			gme.RocksQtMutex.RUnlock()
 			for _, c := range potCols {
-				rl.DrawRectangleLines(c.bRect().x, c.bRect().y, c.bRect().w, c.bRect().h, rl.Beige)
+				rl.DrawRectangleLines(c.bRect().x, c.bRect().y, c.bRect().w, c.bRect().h, rl.DarkBrown)
 			}
 		}
 

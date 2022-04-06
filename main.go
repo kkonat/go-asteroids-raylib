@@ -2,6 +2,9 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"math/rand"
+	"time"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
@@ -16,36 +19,41 @@ func main() {
 	// in newer Go versions.
 	//runtime.GOMAXPROCS(8)
 
-	// defer func() {
-	// 	if err := recover(); err != nil {
-	// 		log.Println("panic occurred:", err)
-	// 	}
-	// }()
-	rl.SetTraceLog(rl.LogAll)
-	// GetWindowHandle();
-	game := newGame(1440, 720)
+	defer func() {
+		if err := recover(); err != nil {
+			log.Println("panic occurred:", err)
+		}
+	}()
+	rl.SetTraceLog(rl.LogNone)
+
+	rand.Seed(time.Now().UnixNano())
+	_initNoise()
+
+	g := newGame(1440, 720)
 
 	for !rl.WindowShouldClose() {
 
-		game.processKeys()
-		game.processMouse()
-		game.playMessages()
-		game.drawAndUpdate()
-
+		g.processKeys()
+		g.processMouse()
+		g.playMessages()
+		g.drawAndUpdate()
 	}
 
 	rl.UnloadMusicStream(ms)
-	game.finalize()
+	g.finalize()
 }
 
 func (g *game) processKeys() {
 	if rl.IsKeyPressed('Q') {
-		if g.ship.cash > 16 {
+		wpn := g.weapons[g.curWeapon]
+		cost := int(20 * wpn.cost)
+		if g.ship.cash > cost {
 			g.sm.play(sMissilesDlvrd)
 			g.addParticle(newTextPart(g.ship.pos, g.ship.speed.MulA(0.5),
-				"+20 missiles", 20, 1, 1, true, rl.Purple, rl.DarkPurple))
-			g.ship.cash -= 16
-			g.ship.missiles += 20
+				"+ 20 x "+wpn.name, 20, 1, 1, true, rl.Purple, rl.DarkPurple))
+			g.ship.cash -= cost
+			wpn.curCap += 20
+			g.weapons[g.curWeapon] = wpn
 		}
 	}
 	if rl.IsKeyPressed('M') {
@@ -85,16 +93,20 @@ func (g *game) processKeys() {
 		g.sm.stop(sForceField)
 	}
 	if rl.IsKeyPressed('L') {
-		g.weapon++
-		g.weapon %= maxWeapons
-		str := fmt.Sprintf(">%s<", weapons[g.weapon])
+		if g.curWeapon > 0 {
+			g.curWeapon--
+		} else {
+			g.curWeapon = len(g.weapons) - 1
+		}
+
+		str := fmt.Sprintf(">%s<", (g.weapons)[g.curWeapon].name)
 		g.addParticle(newTextPart(g.ship.pos, g.ship.speed.MulA(0.5),
 			str, 20, 1, 1, true, rl.Purple, rl.Red))
 	} // cycle weapon left
 	if rl.IsKeyPressed('\'') {
-		g.weapon++
-		g.weapon %= maxWeapons
-		str := fmt.Sprintf(">%s<", weapons[g.weapon])
+		g.curWeapon++
+		g.curWeapon %= len(g.weapons)
+		str := fmt.Sprintf(">%s<", g.weapons[g.curWeapon].name)
 		g.addParticle(newTextPart(g.ship.pos, g.ship.speed.MulA(0.5),
 			str, 20, 1, 1, true, rl.Purple, rl.Red))
 
@@ -140,11 +152,12 @@ func (g *game) processKeys() {
 		g.ship.rotate(.2)
 	}
 	if rl.IsKeyPressed(rl.KeyLeftControl) { // fire
-		if g.ship.missiles > 0 {
-			g.ship.missiles--
-
+		wpn := g.weapons[g.curWeapon]
+		if wpn.curCap > 0 {
+			wpn.curCap -= 1
+			g.weapons[g.curWeapon] = wpn
 			if len(g.missiles) < maxMissiles {
-				launchMissile(g)
+				launchMissile(g, g.curWeapon)
 				g.sm.play(sLaunch)
 			}
 		}

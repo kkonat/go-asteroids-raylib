@@ -2,7 +2,7 @@ package main
 
 import (
 	"image/color"
-	"math/rand"
+	"sync"
 	"time"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -14,66 +14,43 @@ import (
 const (
 	caption            = "test boom boom game"
 	rSpeedMax          = 1
-	noPreferredRocks   = 50
+	noPreferredRocks   = 30
 	PrefferredRockSize = 80
 	maxRocks           = 100
 	maxMissiles        = 50
 	maxParticles       = 50
 	FPS                = 60
 	shieldsLowLimit    = 25
-	ammoLowLimit       = 20
-
-	startWithDebugOn = false
-	startMuted       = false
-
-	maxWeapons = 3
+	forceFieldRadius   = 200
+	gmMaxSensingRange  = 500 // guided missile sensing gmMaxSensingRange
+	gmHalfSensingFov   = 22  // fuided missile field of view
+	startWithDebugOn   = true
+	startMuted         = false
 )
 
-var vectorFont rl.Font
-var debug bool
-
-// type rqtElem dlElem[*Rock]
-
-// func (e rqtElem) bRect() Rect {
-// 	return e.data.bRect()
-// }
-
-type RockListEl struct {
-	ListEl[*Rock]
-}
-
-func (r RockListEl) bRect() Rect {
-	x := int32(r.ListEl.Value.pos.x)
-	y := int32(r.ListEl.Value.pos.y)
-	rad := int32(r.ListEl.Value.radius)
-	return Rect{x - rad, y - rad, rad * 2, rad * 2}
-}
-
 type game struct {
-	sm   *soundManager
-	sprm *spriteManager
-	sf   *starfield
-	time []float32 // gsls uniform [1]float32
-	ship *ship
-
-	// rocks     []*Rock
-	rocks     List[*Rock]
-	missiles  []*missile
-	particles []particle
-
-	RocksQt *QuadTree[RockListEl]
-	//MissilesQt *QuadTree
+	sm           *soundManager
+	sprm         *spriteManager
+	sf           *starfield
+	time         []float32 // gsls uniform [1]float32
+	ship         *ship
+	rocks        RockList
+	missiles     []missile
+	particles    []particle
+	RocksQt      *QuadTree[RockListEl]
+	RocksQtMutex sync.RWMutex
 
 	sW, sH int32
 	gW, gH float64
 
 	paused        bool
 	cursorEnabled bool
-	weapon        int
-	weapons       map[int]string
+	curWeapon     int
+	weapons       map[int]weapon
 }
 
-var weapons = [...]string{"missile", "seeking missile", "laser"}
+var vectorFont rl.Font
+var debug bool
 
 // global time counters
 var tnow, tprev, mAmmoLastPlayed, mShieldsLastPlayed int64
@@ -81,36 +58,29 @@ var tickTock uint8
 
 func newGame(w, h int32) *game {
 
-	rand.Seed(time.Now().UnixNano())
-	_initNoise()
+	g := new(game)
+	g.weapons = make(map[int]weapon)
+	g.weapons[missileNormal] = weapon{"missile", 100, 100, 20, 1.6}
+	g.weapons[missileTriple] = weapon{"triple", 100, 100, 20, 1.6}
+	g.weapons[missileGuided] = weapon{"guided missile", 20, 20, 4, 3.2}
+	g.sW, g.sH = w, h
+	g.gW, g.gH = float64(w), float64(h)
 
 	rl.SetConfigFlags(rl.FlagMsaa4xHint | rl.FlagVsyncHint | rl.FlagWindowMaximized)
-
 	rl.InitWindow(w, h, caption)
-	// handle := rl.GetWindowHandle()
-	// println(handle)
-	// ctx := nk.NkPlatformInit(handle, nk.PlatformInstallCallbacks)
-	// println(ctx)
-	// rl.MaximizeWindow()
 
 	rl.SetTargetFPS(FPS)
 
-	g := new(game)
-
-	g.missiles = make([]*missile, 0, maxMissiles)
+	g.missiles = make([]missile, 0, maxMissiles)
 	g.RocksQt = NewQuadTree[RockListEl](0, Rect{0, 0, w, h})
 	g.initMouse()
 	g.paused = false
-	g.sW, g.sH = w, h
-	g.gW, g.gH = float64(w), float64(h)
 
 	g.time = make([]float32, 1)
 	g.sf = newStarfield(w, h, g.time)
 	debug = startWithDebugOn
 	g.sm = newSoundManager(startMuted)
 	g.sprm = newSpriteManager()
-
-	//g.objects = make([]*object, 0, 20)
 
 	g.ship = newShip(float64(w/2), float64(h/2), 1000, 1000)
 	g.ship.rot = 45 - 180
@@ -125,8 +95,9 @@ func newGame(w, h int32) *game {
 	return g
 }
 
-func (g game) playMessages() {
-	if g.ship.missiles < ammoLowLimit {
+func (g *game) playMessages() {
+	wpn := g.weapons[g.curWeapon]
+	if wpn.curCap < wpn.lowLimit {
 		t := time.Now().Local().Unix()
 		if mAmmoLastPlayed == 0 || t-mAmmoLastPlayed > 15 {
 			{
@@ -166,12 +137,13 @@ func flashColor[T constraints.Ordered](col rl.Color, warn, low, val T) rl.Color 
 
 func (g *game) drawStatusBar() {
 	if !g.paused {
+		wpn := g.weapons[g.curWeapon]
 		rl.DrawRectangle(0, g.sH-20, g.sW, 26, rl.DarkPurple)
 		_multicolorText(20, g.sH-20, 20,
 			"Cash:", rl.Purple, g.ship.cash, rl.Purple, 30, 10,
 			"Shields:", rl.Purple, int(g.ship.shields), flashColor(rl.Purple, 50, shieldsLowLimit, int(g.ship.shields)),
 			"Energy:", rl.Purple, int(g.ship.energy), flashColor(rl.Purple, 500, 100, int(g.ship.energy)),
-			"Missiles:", rl.Purple, g.ship.missiles, flashColor(rl.Purple, 30, ammoLowLimit, g.ship.missiles))
+			wpn.name+"s :", rl.Purple, wpn.curCap, flashColor(rl.Purple, 30, wpn.lowLimit, wpn.curCap))
 
 		rl.DrawFPS(g.sW-80, g.sH-20)
 	} else {
@@ -226,17 +198,19 @@ func (gme *game) moveRocks(dt float64) {
 		// go el.Value.Move(dt)
 		el.Value.Move(dt)
 	}
-	// wg.Done()
+	wg.Done()
 }
 func (gme *game) moveMissiles(dt float64) {
 	for i := range gme.missiles { // move missiles
 		// go gme.missiles[i].Move(dt)
-		gme.missiles[i].Move(dt)
+		gme.missiles[i].Move(gme, dt)
 	}
-	// wg.Done()
+	wg.Done()
 }
 
 func (gme *game) buildRocksQTree() {
+	gme.RocksQtMutex.Lock()
+	defer gme.RocksQtMutex.Unlock()
 	gme.RocksQt.Clear()
 
 	iterator := gme.rocks.Iter()
@@ -245,7 +219,7 @@ func (gme *game) buildRocksQTree() {
 	}
 }
 
-// var wg sync.WaitGroup
+var wg sync.WaitGroup
 
 func (gme *game) drawAndUpdate() {
 
@@ -263,10 +237,11 @@ func (gme *game) drawAndUpdate() {
 
 	rl.ClearBackground(rl.Black)
 	gme.sf.draw() // draw starfield
-
-	gme.drawRocks()
+	gme.drawForceField()
 
 	gme.drawMissiles()
+	gme.drawRocks()
+
 	gme.drawParticles()
 	gme.ship.Draw()
 	gme.drawStatusBar()
@@ -290,39 +265,26 @@ func (gme *game) drawAndUpdate() {
 		}
 		gme.ship.Move(dt)
 
-		gme.ship.chargeUp() // chargeup ship
+		gme.ship.chargeUp() // chargeup ship energy
 
-		// wg.Add(1) // Waitgroup
-		gme.moveRocks(dt)
-		// wg.Add(1)
-		gme.moveMissiles(dt)
+		wg.Add(1)
+		go gme.moveRocks(dt)
+		wg.Add(1)
+		go gme.moveMissiles(dt)
+
+		wg.Wait() // wait for the above two procedures to complete
+
 		gme.buildRocksQTree()
-		// wg.Wait()
 
-		// t0 := time.Now().UnixNano()
 		gme.processMissileHits()
-		if gme.ship.forceField {
-			gme.processForceField()
-		}
+		go gme.processForceField()
+		go gme.processShipHits()
 
-		gme.processShipHits()
-
-		// t0 = time.Now().UnixNano() - t0
-		// var tmax int64
-		// comps := gme.missilesNo * gme.rocksNo
-		// if tmax < t0 {
-		// 	tmax = t0
-		// 	fmt.Printf("[%d comps took %.3f us]\n", comps, float64(tmax)/1000)
-		// }
 		gme.constrainShip()
 
-		// go gme.constrainRocks()
-		// go gme.constrainMissiles()
-		// go gme.animateParticles()
-
-		gme.constrainRocks()
-		gme.constrainMissiles()
-		gme.animateParticles()
+		go gme.constrainRocks()
+		go gme.constrainMissiles()
+		go gme.animateParticles()
 	}
 }
 

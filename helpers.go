@@ -46,6 +46,9 @@ func _lineThick(p1, p2 V2, thickness float32, col rl.Color) {
 func _circle(p1 V2, r float64, col rl.Color) {
 	rl.DrawCircleLines(int32(p1.x), int32(p1.y), float32(r), col)
 }
+func _circleGradient(p1 V2, r float64, col1, col2 rl.Color) {
+	rl.DrawCircleGradient(int32(p1.x), int32(p1.y), float32(r), col1, col2)
+}
 func _disc(p1 V2, r float64, col rl.Color) {
 	rl.DrawCircle(int32(p1.x), int32(p1.y), float32(r), col)
 }

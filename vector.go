@@ -57,7 +57,7 @@ func rotV(angle float64) V2 {
 func (v V2) Norm() V2 {
 	return v.DivA(v.Len())
 }
-
+func (v1 V2) NormDot(v2 V2) float64 { return v1.x*v2.x + v1.y*v2.y }
 func M22MulV(m M22, v V2) V2 { // matrix x vector multiplication
 	var r V2
 	r.x = m.a00*v.x + m.a01*v.y
