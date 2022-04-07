@@ -1,6 +1,7 @@
 package main
 
 import (
+	"container/list"
 	"image/color"
 	"sync"
 	"time"
@@ -14,7 +15,7 @@ import (
 const (
 	caption            = "test boom boom game"
 	rSpeedMax          = 1
-	noPreferredRocks   = 30
+	noPreferredRocks   = 20
 	PrefferredRockSize = 80
 	maxRocks           = 100
 	maxMissiles        = 50
@@ -34,10 +35,10 @@ type game struct {
 	sf           *starfield
 	time         []float32 // gsls uniform [1]float32
 	ship         *ship
-	rocks        RockList
+	rocks        list.List
 	missiles     []missile
 	particles    []particle
-	RocksQt      *QuadTree[RockListEl]
+	RocksQt      *QuadTree[*Rock]
 	RocksQtMutex sync.RWMutex
 
 	sW, sH int32
@@ -72,7 +73,7 @@ func newGame(w, h int32) *game {
 	rl.SetTargetFPS(FPS)
 
 	g.missiles = make([]missile, 0, maxMissiles)
-	g.RocksQt = NewQuadTree[RockListEl](0, Rect{0, 0, w, h})
+	g.RocksQt = newNode[*Rock](0, Rect{0, 0, w, h})
 	g.initMouse()
 	g.paused = false
 
@@ -175,9 +176,8 @@ func (gme *game) animateParticles() {
 	}
 }
 func (gme *game) drawRocks() {
-	iterator := gme.rocks.Iter()
-	for el, ok := iterator(); ok; el, ok = iterator() {
-		el.Value.Draw()
+	for el := gme.rocks.Front(); el != nil; el = el.Next() {
+		el.Value.(*Rock).Draw()
 	}
 }
 func (gme *game) drawMissiles() {
@@ -193,29 +193,24 @@ func (gme *game) drawParticles() {
 
 func (gme *game) moveRocks(dt float64) {
 
-	iterator := gme.rocks.Iter()
-	for el, ok := iterator(); ok; el, ok = iterator() {
-		// go el.Value.Move(dt)
-		el.Value.Move(dt)
+	for el := gme.rocks.Front(); el != nil; el = el.Next() {
+		el.Value.(*Rock).Move(dt)
 	}
-	wg.Done()
+	//	wg.Done()
 }
 func (gme *game) moveMissiles(dt float64) {
 	for i := range gme.missiles { // move missiles
 		// go gme.missiles[i].Move(dt)
 		gme.missiles[i].Move(gme, dt)
 	}
-	wg.Done()
+	//	wg.Done()
 }
 
 func (gme *game) buildRocksQTree() {
-	gme.RocksQtMutex.Lock()
-	defer gme.RocksQtMutex.Unlock()
-	gme.RocksQt.Clear()
-
-	iterator := gme.rocks.Iter()
-	for r, ok := iterator(); ok; r, ok = iterator() {
-		gme.RocksQt.Insert(RockListEl{ListEl: *r})
+	gme.RocksQt = newNode[*Rock](0, Rect{0, 0, gme.sW, gme.sH})
+	
+	for el := gme.rocks.Front(); el != nil; el = el.Next() {
+		gme.RocksQt.Insert(el.Value.(*Rock))
 	}
 }
 
@@ -267,24 +262,24 @@ func (gme *game) drawAndUpdate() {
 
 		gme.ship.chargeUp() // chargeup ship energy
 
-		wg.Add(1)
-		go gme.moveRocks(dt)
-		wg.Add(1)
-		go gme.moveMissiles(dt)
+		//		wg.Add(1)
+		gme.moveRocks(dt)
+		//		wg.Add(1)
+		gme.moveMissiles(dt)
 
-		wg.Wait() // wait for the above two procedures to complete
+		//wg.Wait() // wait for the above two procedures to complete
 
 		gme.buildRocksQTree()
 
 		gme.processMissileHits()
-		go gme.processForceField()
-		go gme.processShipHits()
+		gme.processForceField()
+		gme.processShipHits()
 
 		gme.constrainShip()
 
-		go gme.constrainRocks()
-		go gme.constrainMissiles()
-		go gme.animateParticles()
+		gme.constrainRocks()
+		gme.constrainMissiles()
+		gme.animateParticles()
 	}
 }
 

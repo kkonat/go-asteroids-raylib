@@ -16,7 +16,7 @@ const (
 )
 
 // -- debug
-func drawQt(qt *QuadTree[RockListEl]) {
+func drawQt(qt *QuadTree[*Rock]) {
 	if len(qt.Objects) != 0 {
 		rl.DrawRectangleLines(qt.Bounds.x+2, qt.Bounds.y+2, qt.Bounds.w-4, qt.Bounds.h-4, rl.DarkGray)
 		str := fmt.Sprintf("#%d", len(qt.Objects))

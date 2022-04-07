@@ -39,16 +39,15 @@ func (g *game) constrainShip() {
 func (g *game) constrainRocks() {
 	const limit = -50 // ordinate to detect rock going off screen / respawn new one
 
-	iterator := g.rocks.Iter()
 	var count int
-	for rock, ok := iterator(); ok; rock, ok = iterator() {
+	for rock := g.rocks.Front(); rock != nil; rock = rock.Next() {
 		count++
-		r := rock.Value
+		r := rock.Value.(*Rock)
 		if (r.pos.x+r.radius < limit && r.speed.x < 0) ||
 			(r.pos.x-r.radius > g.gW-limit && r.speed.x > 0) ||
 			(r.pos.y+r.radius < limit && r.speed.y < 0) ||
 			(r.pos.y-r.radius > g.gH-limit && r.speed.y > 0) {
-			if g.rocks.Len < noPreferredRocks {
+			if g.rocks.Len() < noPreferredRocks {
 				// respawn rock in a new sector, first randomly on the screen
 				r.randomize()
 				r.speed = V2{rnd()*rSpeedMax - rSpeedMax/2, rnd()*rSpeedMax - rSpeedMax/2}
@@ -91,14 +90,14 @@ func (g *game) constrainRocks() {
 					}
 				}
 			} else {
-				if rock == nil || g.rocks.Len == 0 {
+				if rock == nil || g.rocks.Len() == 0 {
 					panic("delete rock outside")
 				}
-				g.rocks.Delete(rock)
+				g.rocks.Remove(rock)
 			}
 		}
 	}
-	fmt.Println("Rock count:", count, " rocklist len=", g.rocks.Len)
+	//	fmt.Println("Rock count:", count, " rocklist len=", g.rocks.Len())
 }
 func (g *game) constrainMissiles() {
 	const limit = -10
@@ -156,9 +155,8 @@ func (g *game) processForceField() {
 	if g.ship.forceField {
 		dSpeed := V2{0, 0}
 
-		iterator := g.rocks.Iter()
-		for r, ok := iterator(); ok; r, ok = iterator() {
-			rock := r.Value
+		for r := g.rocks.Front(); r != nil; r = r.Next() {
+			rock := r.Value.(*Rock)
 			v := g.ship.pos.Sub(rock.pos)
 			dist := v.Len() - rock.radius
 			if dist < forceFieldRadius {
@@ -194,8 +192,8 @@ func (g *game) processShipHits() {
 	g.RocksQtMutex.RLock()
 	potCols := g.RocksQt.MayCollide(shipBRect)
 	g.RocksQtMutex.RUnlock()
-	for _, ro := range potCols {
-		r := ro.Value
+	for _, r := range potCols {
+
 		for _, c := range circles {
 			dist2 := r.pos.Sub(c.p).Len2()
 			if dist2 < squared(r.radius+c.r) {
@@ -221,6 +219,22 @@ func (g *game) processShipHits() {
 	}
 }
 
+var cycle, corrupted int
+
+func (g *game) checkIfOntheList(ptcls []*Rock) bool {
+	for i := range ptcls {
+		result := false
+		for el := g.rocks.Front(); el != nil; el = el.Next() {
+			if ptcls[i] == el.Value {
+				result = true
+			}
+		}
+		if !result {
+			return false
+		}
+	}
+	return true
+}
 func (g *game) processMissileHits() {
 	const mr = 10 // missile radius
 	var hit bool
@@ -228,27 +242,49 @@ func (g *game) processMissileHits() {
 	mi := 0
 	for mi < len(g.missiles) {
 		missile := g.missiles[mi]
-
 		mp := missile.getData().pos
-		//ms := missile.speed.MulA(13)
 		missileBRect := missile.getData().shape.bRect
 
-		g.RocksQtMutex.RLock()
 		potCols := g.RocksQt.MayCollide(missileBRect)
-		g.RocksQtMutex.RUnlock()
+
+		if !g.checkIfOntheList(potCols) {
+			println("potcols has elements not from the list")
+		}
+
+		cycle++
+		failed := 0
+		total := 0
+
+		for i := range potCols {
+			if !g.RocksQt.find(potCols[i]) {
+				failed++
+			}
+			total++
+		}
+		if failed > 0 {
+			corrupted++
+			corruptedPrcnt := float64(failed) / float64(total)
+			corruptedMayCollides := float64(corrupted) / float64(cycle)
+			fmt.Printf("Corruptions =%d last corrupted (%d / %d)=%d\n",
+				int(corruptedMayCollides*100),
+				failed, total, int(corruptedPrcnt*100))
+		}
 
 		if debug {
 			if degubDrawMissileLines {
 				for _, c := range potCols {
-					_line(mp, c.Value.pos, rl.Red)
+					_line(mp, c.pos, rl.Red)
 				}
 			}
 		}
 
 		hit = false
 		for i := range potCols {
-			ro := potCols[i]
-			r := ro.Value
+			r := potCols[i]
+
+			// if !g.RocksQt.find(potCols[i]) {
+			// 	fmt.Printf("potCols[%d]=%p not on QT\n", i, potCols[i])
+			// }
 			rp := r.pos
 			dist2 := rp.Sub(mp).Len2()
 			if dist2 < squared(r.radius+mr) { // hit
@@ -270,14 +306,24 @@ func (g *game) processMissileHits() {
 				// copy new rocks
 				for i := 0; i < len(nr); i++ {
 					if nr[i].radius > 8 {
-						if g.rocks.Len < maxRocks {
-							g.rocks.AppendVal(nr[i])
+						if g.rocks.Len() < maxRocks {
+							g.rocks.PushBack(nr[i])
 							nr[i].buildShape()
 						}
 					}
 				}
+				if !g.RocksQt.find(potCols[i]) {
+					fmt.Printf("MI:%d, QT:  look for %p, not found\n", mi, potCols[i])
+					g.RocksQt.Print(potCols[i])
+					fmt.Printf(" Remove-->: %d. %p", i, potCols[i])
+					fmt.Printf("\n %v ", g.RocksQt.Remove(potCols[i]))
+				}
+				for re := g.rocks.Front(); re != nil; re = re.Next() {
+					if re.Value == potCols[i] {
+						g.rocks.Remove(re)
+					}
+				}
 
-				g.rocks.Delete(&potCols[i].ListEl)
 				g.deleteMissile(mi)
 				hit = true
 				break
@@ -287,4 +333,16 @@ func (g *game) processMissileHits() {
 			mi++
 		}
 	}
+}
+func (g *game) RocksListPrint(p any) {
+	fmt.Printf("RX[%d]: ", g.rocks.Len())
+	for re := g.rocks.Front(); re != nil; re = re.Next() {
+		if re.Value == p {
+			fmt.Printf("|%p|, ", re.Value)
+		} else {
+			fmt.Printf("%p ", re.Value)
+		}
+
+	}
+	fmt.Println()
 }

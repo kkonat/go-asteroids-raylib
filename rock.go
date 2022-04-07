@@ -3,7 +3,6 @@ package main
 import (
 	"math"
 	"math/rand"
-	"sync"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
@@ -14,35 +13,14 @@ type Rock struct {
 	radius float64
 	mass   float64
 }
-type RockListEl struct {
-	ListEl[*Rock]
-}
 
-func (r RockListEl) bRect() Rect {
-	x := int32(r.ListEl.Value.pos.x)
-	y := int32(r.ListEl.Value.pos.y)
-	rad := int32(r.ListEl.Value.radius)
+func (r *Rock) bRect() Rect {
+	x := int32(r.pos.x)
+	y := int32(r.pos.y)
+	rad := int32(r.radius)
 	return Rect{x - rad, y - rad, rad * 2, rad * 2}
 }
 
-type RockList struct {
-	List[*Rock]
-	mutex sync.RWMutex
-}
-
-func (rl *RockList) Delete(el *ListEl[*Rock]) bool {
-	rl.mutex.Lock()
-	defer rl.mutex.Unlock()
-	return rl.List.Delete(&el)
-
-}
-
-func (rl *RockList) Iter() func() (*ListEl[*Rock], bool) {
-	rl.mutex.RLock()
-	defer rl.mutex.RUnlock()
-	retv := rl.List.Iter()
-	return retv
-}
 func newRockRandom(g *game) *Rock {
 
 	r := new(Rock)
@@ -105,7 +83,7 @@ func generateRocks(g *game, preferredRocks int) {
 		if cX+safeCircle < nr.pos.x+nr.radius || cX-safeCircle > nr.pos.x-nr.radius ||
 			cY+safeCircle < nr.pos.y+nr.radius || cY-safeCircle > nr.pos.y-nr.radius {
 			// g.rocks = append(g.rocks, nr)
-			g.rocks.AppendVal(nr)
+			g.rocks.PushBack(nr)
 			i++
 		}
 	}

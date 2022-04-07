@@ -66,11 +66,9 @@ func (m *guidedMissile) Move(g *game, dt float64) {
 
 	if m.life > 20 { // starts targeting after a while
 		m.targetRock = nil
-		iterator := g.rocks.Iter()
 		var mindist = float64(2000)
-
-		for r, ok := iterator(); ok; r, ok = iterator() {
-			rock := r.Value
+		for r := g.rocks.Front(); r != nil; r = r.Next() {
+			rock := r.Value.(*Rock)
 			dist := m.pos.Sub(rock.pos).Len()
 			v1 := rock.pos.Sub(m.pos).Norm()
 			v2 := m.speed.Norm()
