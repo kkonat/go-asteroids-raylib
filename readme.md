@@ -1,4 +1,4 @@
-## Boom Boom ##
+## Boom Boom ## 
 
 ---
 A simple space shooter game, kind of asteroids clone, but gonna  add some aliens...<br>

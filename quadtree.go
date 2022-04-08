@@ -107,7 +107,6 @@ func (q *QuadTree[T]) find(obj T) bool {
 		for _, o := range q.Objects {
 			if o == obj {
 				return true
-				//break
 			}
 		}
 	} else {
@@ -118,34 +117,28 @@ func (q *QuadTree[T]) find(obj T) bool {
 	}
 	return found
 }
+
 func (q *QuadTree[T]) Remove(objTbRemved T) bool {
-	r := q.rem(objTbRemved, false)
-	if !r {
-		fmt.Printf(" >>QT el not removed")
-		//q.rem(objTbRemved, true)
-	}
-	return r
-}
-func (q *QuadTree[T]) rem(objTbRemved T, debug bool) bool {
 	removed := false
 	if q.Nodes[0] == nil {
 		for i, o := range q.Objects {
-			if debug {
-				fmt.Printf("_%p_ ", o)
-			}
 			if o == objTbRemved {
+				var zv T
+				q.Objects[i] = zv
 				q.Objects = append(q.Objects[:i], q.Objects[i+1:]...)
-				fmt.Print(" X removed X ")
 				q.Total--
-				return true
-				//break
+				removed = true
+				break
 			}
 		}
 	} else {
-		removed = removed || q.Nodes[0].rem(objTbRemved, debug)
-		removed = removed || q.Nodes[1].rem(objTbRemved, debug)
-		removed = removed || q.Nodes[2].rem(objTbRemved, debug)
-		removed = removed || q.Nodes[3].rem(objTbRemved, debug)
+		removed = removed || q.Nodes[0].Remove(objTbRemved)
+		removed = removed || q.Nodes[1].Remove(objTbRemved)
+		removed = removed || q.Nodes[2].Remove(objTbRemved)
+		removed = removed || q.Nodes[3].Remove(objTbRemved)
+	}
+	if !removed {
+		fmt.Print("x")
 	}
 	return removed
 }
@@ -179,7 +172,7 @@ func (q *QuadTree[T]) Insert(obj T) {
 	}
 
 	q.Objects = append(q.Objects, obj) // if it doesn't fit into subquadrant add it here
-
+	//	fmt.Printf("+[%p] ", obj)
 	if (len(q.Objects) > qtMaxObjects) && (q.Level < qtMaxLevels) {
 		if q.Nodes[0] == nil {
 			q.split()
@@ -207,20 +200,23 @@ func (q *QuadTree[T]) MayCollide(r Rect) []T {
 
 	quadrant := q.getQuadrant(r)
 
-	collidingObjects := q.Objects
-	// for i, o := range q.Objects {
-	// 	dist2 := (o.bRect().x-r.x)*(o.bRect().x-r.x) + (o.bRect().y-r.y)*(o.bRect().y-r.y)
-	// 	if dist2 < minDist2 {
-	// 		collidingObjects = append(collidingObjects, q.Objects[i])
+	collidingObjects := make([]T, 0) // := q.Objects
+	//collidingObjects = append(collidingObjects, q.Objects...)
+	for i, o := range q.Objects {
+		dist2 := (o.bRect().x-r.x)*(o.bRect().x-r.x) + (o.bRect().y-r.y)*(o.bRect().y-r.y)
+		if dist2 < minDist2 {
+			collidingObjects = append(collidingObjects, q.Objects[i])
 
-	// 	}
-	// }
+		}
+	}
 	if q.Nodes[0] != nil {
 		if quadrant != qDoesntFit {
 			collidingObjects = append(collidingObjects, q.Nodes[quadrant].MayCollide(r)...)
 		} else {
+
 			for i := 0; i < 4; i++ {
 				collidingObjects = append(collidingObjects, q.Nodes[i].MayCollide(r)...)
+
 			}
 		}
 	}

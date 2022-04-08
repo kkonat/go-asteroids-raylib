@@ -21,33 +21,33 @@ func (r *Rock) bRect() Rect {
 	return Rect{x - rad, y - rad, rad * 2, rad * 2}
 }
 
+func (r *Rock) randomize() {
+	r.radius = PrefferredRockSize/10 + rnd()*PrefferredRockSize
+	r.mass = squared(r.radius)
+	r.buildShape()
+	r.rotSpeed = rnd()*1.5 - 0.75
+}
+
 func newRockRandom(g *game) *Rock {
-
 	r := new(Rock)
-
 	r.randomize()
 	r.pos = V2{rnd() * g.gW, rnd() * g.gH}
 	r.speed = V2{rnd()*rSpeedMax*2.0 - rSpeedMax, rnd()*rSpeedMax*2.0 - rSpeedMax}
 	r.rotSpeed = rnd()*0.2 - 0.1
-
 	return r
 }
 
 func newRockAt(pos, speed V2) *Rock {
-
 	r := new(Rock)
-
 	r.randomize()
 	r.pos = pos
 	r.speed = speed
-
 	return r
 }
 
 func (r *Rock) buildShape() {
 	n := 6 + rand.Intn(10) + int(r.radius/5)
 	var step = 360 / float64(n)
-
 	data := make([]V2, n)
 	angle := 0.0
 	for i := 0; i < n; i++ {
@@ -56,62 +56,44 @@ func (r *Rock) buildShape() {
 		p := cs(angle)
 		data[i] = p.MulA(r1)
 	}
-
 	r.shape = newShape(data)
-
 }
 
-func (r *Rock) randomize() {
-	r.radius = PrefferredRockSize/10 + rnd()*PrefferredRockSize
-	r.mass = squared(r.radius)
-	//n := 6 + rand.Intn(10) + int(r.radius/5)
+func (g *game)generateRocks( preferredRocks int) {
 
-	r.buildShape()
-
-	r.rotSpeed = rnd()*1.5 - 0.75
-}
-
-func generateRocks(g *game, preferredRocks int) {
-
-	const safeCircle = 200
-
+	const safeCircle = 300
 	cX, cY := g.ship.pos.x, g.ship.pos.y
-
 	i := 0
 	for i < preferredRocks { // ( cx +r )  ( nr.x +nr.r)
 		nr := newRockRandom(g)
 		if cX+safeCircle < nr.pos.x+nr.radius || cX-safeCircle > nr.pos.x-nr.radius ||
 			cY+safeCircle < nr.pos.y+nr.radius || cY-safeCircle > nr.pos.y-nr.radius {
-			// g.rocks = append(g.rocks, nr)
 			g.rocks.PushBack(nr)
 			i++
 		}
 	}
 
 }
-func (r *Rock) Draw() {
+func (r *Rock) Draw() { r.shape.DrawThin(r.pos, r.rot, rl.Black, rl.DarkGray, 0.75) }
 
-	r.shape.DrawThin(r.pos, r.rot, rl.Black, rl.DarkGray, 0.75)
-
-}
-
-func touches(which int, allRocks []*Rock) (bool, int) {
-	for j, rock := range allRocks {
-		if which != j {
-			if rockDist2(allRocks[which], rock) < squared(allRocks[which].radius+rock.radius) {
-				return true, j
-			}
-		}
-	}
-	return false, 0
-}
-
-func rockDist2(c1, c2 *Rock) float64 {
-	return (c1.pos.x-c2.pos.x)*(c1.pos.x-c2.pos.x) +
-		(c1.pos.y-c2.pos.y)*(c1.pos.y-c2.pos.y)
-}
 func (r *Rock) split(hitat, speed V2, n int) []*Rock {
 
+	rockDist2 := func(c1, c2 *Rock) float64 {
+		return (c1.pos.x-c2.pos.x)*(c1.pos.x-c2.pos.x) +
+			(c1.pos.y-c2.pos.y)*(c1.pos.y-c2.pos.y)
+	}
+	touches := func(which int, allRocks []*Rock) (bool, int) {
+		for j, rock := range allRocks {
+			if which != j {
+				if rockDist2(allRocks[which], rock) < squared(allRocks[which].radius+rock.radius) {
+					return true, j
+				}
+			}
+		}
+		return false, 0
+	}
+
+	// make new *Rocks and helper slices
 	newRocks := make([]*Rock, n)
 	frozen := make([]bool, n)
 
@@ -126,7 +108,8 @@ func (r *Rock) split(hitat, speed V2, n int) []*Rock {
 		frozen[i] = false
 		alpha += alphastep
 	}
-	// find minimum distance between all points, initialy minimum is big circle radius,
+	// find minimum distance between all points, initialy the minimum value is big circle radius,
+
 	var mindist2 = squared(r.radius) // compare suared values to avoid square root
 
 	for i, c1 := range newRocks {
@@ -144,14 +127,11 @@ func (r *Rock) split(hitat, speed V2, n int) []*Rock {
 
 	// seed circles on all these points with this min radius - random value
 	// they do not overlap
-
 	for i := range newRocks {
 		newRocks[i].radius = rnd() * d
 	}
-	//draw_circles(circles) // draw
-	//rl.EndDrawing()
 
-	// adjust new rocks
+	// reposition new rocks
 	for {
 		var increased = 0
 		for i := range newRocks {
@@ -197,7 +177,7 @@ func (r *Rock) split(hitat, speed V2, n int) []*Rock {
 			break
 		}
 	}
-	center := V2{0, 0}
+	center := V2{0, 0} // calculate new center of the rocks group and calculate masses
 	for i, r := range newRocks {
 		r.radius *= 1.2
 		newRocks[i].mass = squared(r.radius)
@@ -206,18 +186,16 @@ func (r *Rock) split(hitat, speed V2, n int) []*Rock {
 	center = center.DivA(float64(len(newRocks)))
 
 	for i, ir := range newRocks {
-		explodev := ir.pos.Sub(center).Norm()
-		rotv := V2{-explodev.y, explodev.x} //perpendicular
-		rotv = rotv.MulA(r.rotSpeed)
-		explthrust := r.pos.Sub(hitat).Norm()
-		missilethr := speed.Norm()
-		masscontrib := math.Sqrt(ir.mass) / 5
-		newspeed := explodev.Add(rotv).Add(explthrust).Add(missilethr).DivA(masscontrib)
+		explodev := ir.pos.Sub(center).Norm() // force throwing rocks outside
+		rotv := V2{-explodev.y, explodev.x}   //perpendicular
+		rotv = rotv.MulA(r.rotSpeed)          // centrifugal force
+		explthrust := r.pos.Sub(hitat).Norm() // thrust from the hit point
+		missilethr := speed.Norm()            // missile speedd contribution
+		masscontrib := math.Sqrt(ir.mass) / 5 // mass impact, larger move less
 
-		newRocks[i].speed = r.speed.Add(newspeed)
-		newRocks[i].rot = (r.rot + rnd()*2.0 - 1) / 2
+		newspeed := explodev.Add(rotv).Add(explthrust).Add(missilethr).DivA(masscontrib) // compute new rock speed
+		newRocks[i].speed = r.speed.Add(newspeed)                                        // add it
+		newRocks[i].rot = (r.rot + rnd()*2.0 - 1) / 2                                    // compute new rotation
 	}
-	//rl.EndDrawing()
-
 	return newRocks
 }

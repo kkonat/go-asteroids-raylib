@@ -14,6 +14,7 @@ type weapon struct {
 	maxCap   int
 	curCap   int
 	lowLimit int
+	scoreMult float64
 	cost     float64
 }
 

@@ -221,19 +221,27 @@ func (g *game) processShipHits() {
 
 var cycle, corrupted int
 
-func (g *game) checkIfOntheList(ptcls []*Rock) bool {
+func (g *game) checkIfOntheList(ptcls []*Rock) (int, any) {
+	var non int
+	nonl := make([]*Rock, 0)
 	for i := range ptcls {
-		result := false
+		found := false
 		for el := g.rocks.Front(); el != nil; el = el.Next() {
 			if ptcls[i] == el.Value {
-				result = true
+				found = true
+				break
 			}
 		}
-		if !result {
-			return false
+		if !found {
+			non++
+			nonl = append(nonl, ptcls[i])
 		}
 	}
-	return true
+	if non > 0 {
+		return non, nonl[0]
+	} else {
+		return 0, nil
+	}
 }
 func (g *game) processMissileHits() {
 	const mr = 10 // missile radius
@@ -244,31 +252,36 @@ func (g *game) processMissileHits() {
 		missile := g.missiles[mi]
 		mp := missile.getData().pos
 		missileBRect := missile.getData().shape.bRect
+		//fmt.Printf("Mi:%d ", mi)
 
 		potCols := g.RocksQt.MayCollide(missileBRect)
 
-		if !g.checkIfOntheList(potCols) {
-			println("potcols has elements not from the list")
+		no, p := g.checkIfOntheList(potCols)
+		if no > 0 {
+			fmt.Printf("potcols has %d elements not from the list [%p]\nList:", no, p)
 		}
+		// else {
+		// 	fmt.Println("potcols ok")
+		// }
 
-		cycle++
-		failed := 0
-		total := 0
+		// cycle++
+		// failed := 0
+		// total := 0
 
-		for i := range potCols {
-			if !g.RocksQt.find(potCols[i]) {
-				failed++
-			}
-			total++
-		}
-		if failed > 0 {
-			corrupted++
-			corruptedPrcnt := float64(failed) / float64(total)
-			corruptedMayCollides := float64(corrupted) / float64(cycle)
-			fmt.Printf("Corruptions =%d last corrupted (%d / %d)=%d\n",
-				int(corruptedMayCollides*100),
-				failed, total, int(corruptedPrcnt*100))
-		}
+		// for _,p := range potCols {
+		// 	if !g.RocksQt.find(p) {
+		// 		failed++
+		// 	}
+		// 	total++
+		// }
+		// if failed > 0 {
+		// 	corrupted++
+		// 	corruptedPrcnt := float64(failed) / float64(total)
+		// 	corruptedMayCollides := float64(corrupted) / float64(cycle)
+		// 	fmt.Printf("Corruptions =%d last corrupted (%d / %d)=%d\n",
+		// 		int(corruptedMayCollides*100),
+		// 		failed, total, int(corruptedPrcnt*100))
+		// }
 
 		if debug {
 			if degubDrawMissileLines {
@@ -289,8 +302,11 @@ func (g *game) processMissileHits() {
 			dist2 := rp.Sub(mp).Len2()
 			if dist2 < squared(r.radius+mr) { // hit
 				// explosion vFX
+				hitR := potCols[i]
+				fmt.Printf(" hit:%p", hitR)
+
 				distBonus := g.ship.pos.Sub(r.pos).Len() / 200
-				score := 1 + int(100/r.radius*distBonus/3)
+				score := 1 + int((100/r.radius*distBonus/3)*g.weapons[g.curWeapon].scoreMult/4)
 				g.ship.cash += score
 				str := fmt.Sprintf("+%d", score)
 				g.addParticle(newTextPart(missile.getData().pos, missile.getData().speed, str, 16, 2, 0, false, rl.Yellow, rl.Red))
@@ -300,6 +316,15 @@ func (g *game) processMissileHits() {
 				// sound
 				g.sm.playPM(sExpl, 0.5+rnd32())
 
+				// if !g.RocksQt.find(hitR) {
+				// 	no, p := g.checkIfOntheList(potCols)
+				// 	fmt.Printf("MI:%d, look for %p, not found (%d wrong on the list [%p]) ", mi, hitR, no, p)
+				// 	g.RocksQt.Print(hitR)
+
+				// }
+				// fmt.Printf(" Remove-->: %d. %p result:", i, hitR)
+				g.RocksQt.Remove(hitR)
+
 				// split rock
 				nr := r.split(missile.getData().pos, missile.getData().speed, 6)
 
@@ -307,19 +332,14 @@ func (g *game) processMissileHits() {
 				for i := 0; i < len(nr); i++ {
 					if nr[i].radius > 8 {
 						if g.rocks.Len() < maxRocks {
-							g.rocks.PushBack(nr[i])
 							nr[i].buildShape()
+							g.rocks.PushBack(nr[i])
 						}
 					}
 				}
-				if !g.RocksQt.find(potCols[i]) {
-					fmt.Printf("MI:%d, QT:  look for %p, not found\n", mi, potCols[i])
-					g.RocksQt.Print(potCols[i])
-					fmt.Printf(" Remove-->: %d. %p", i, potCols[i])
-					fmt.Printf("\n %v ", g.RocksQt.Remove(potCols[i]))
-				}
+				// find and delete rock - this definitively works OK
 				for re := g.rocks.Front(); re != nil; re = re.Next() {
-					if re.Value == potCols[i] {
+					if re.Value == hitR {
 						g.rocks.Remove(re)
 					}
 				}

@@ -30,17 +30,17 @@ func main() {
 	_initNoise()
 
 	g := newGame(1440, 720)
+	defer func() {
+		rl.UnloadMusicStream(ms)
+		g.finalize()
+	}()
 
 	for !rl.WindowShouldClose() {
-
 		g.processKeys()
 		g.processMouse()
 		g.playMessages()
 		g.drawAndUpdate()
 	}
-
-	rl.UnloadMusicStream(ms)
-	g.finalize()
 }
 
 func (g *game) processKeys() {

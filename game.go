@@ -15,7 +15,7 @@ import (
 const (
 	caption            = "test boom boom game"
 	rSpeedMax          = 1
-	noPreferredRocks   = 20
+	noPreferredRocks   = 40
 	PrefferredRockSize = 80
 	maxRocks           = 100
 	maxMissiles        = 50
@@ -61,9 +61,9 @@ func newGame(w, h int32) *game {
 
 	g := new(game)
 	g.weapons = make(map[int]weapon)
-	g.weapons[missileNormal] = weapon{"missile", 100, 100, 20, 1.6}
-	g.weapons[missileTriple] = weapon{"triple", 100, 100, 20, 1.6}
-	g.weapons[missileGuided] = weapon{"guided missile", 20, 20, 4, 3.2}
+	g.weapons[missileNormal] = weapon{"missile", 100, 100, 20, 4.0, 1.6}
+	g.weapons[missileTriple] = weapon{"triple", 100, 100, 20, 1.3, 4.8}
+	g.weapons[missileGuided] = weapon{"guided missile", 20, 20, 4, 3.0, 3.2}
 	g.sW, g.sH = w, h
 	g.gW, g.gH = float64(w), float64(h)
 
@@ -85,7 +85,7 @@ func newGame(w, h int32) *game {
 
 	g.ship = newShip(float64(w/2), float64(h/2), 1000, 1000)
 	g.ship.rot = 45 - 180
-	generateRocks(g, noPreferredRocks)
+	g.generateRocks(noPreferredRocks)
 
 	tprev = time.Now().Local().UnixMicro()
 
@@ -208,7 +208,7 @@ func (gme *game) moveMissiles(dt float64) {
 
 func (gme *game) buildRocksQTree() {
 	gme.RocksQt = newNode[*Rock](0, Rect{0, 0, gme.sW, gme.sH})
-	
+
 	for el := gme.rocks.Front(); el != nil; el = el.Next() {
 		gme.RocksQt.Insert(el.Value.(*Rock))
 	}
