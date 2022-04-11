@@ -2,6 +2,7 @@ package main
 
 import (
 	"math/rand"
+	v "rlbb/lib/vector"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
@@ -21,6 +22,7 @@ type textPart struct {
 	sCol, eCol    rl.Color
 }
 
+// emits new text particle with given pos, speed, text, duration, growSpeed, randomDir, start and end color
 func newTextPart(pos, speed V2, text string, size int32, duration, growSpd float32, randomDir bool, sCol, eCol rl.Color) *textPart {
 	tp := new(textPart)
 	tp.speed = speed.MulA(0.5)
@@ -28,7 +30,7 @@ func newTextPart(pos, speed V2, text string, size int32, duration, growSpd float
 	tp.pos = pos
 	tp.text = text
 	if randomDir {
-		tp.speed = cs(rnd() * 360)
+		tp.speed = v.Cs(rnd() * 360)
 	}
 	tp.size = float32(size)
 	tp.life = uint8(duration * FPS)
@@ -52,28 +54,31 @@ func (tp *textPart) Animate() {
 		tp.life--
 	}
 }
+
+// draws text particle
 func (tp *textPart) Draw() {
 	col := _colorBlend(tp.life, tp.maxLife, tp.eCol, tp.sCol) // tp.life goes from 1 to 0, so reverse blend
 	textw := rl.MeasureText(tp.text, int32(tp.size)) / 2
-	rl.DrawText(tp.text, int32(tp.pos.x)-textw, int32(tp.pos.y-float64(tp.size)/2), int32(tp.size), col)
+	rl.DrawText(tp.text, int32(tp.pos.X)-textw, int32(tp.pos.Y-float64(tp.size)/2), int32(tp.size), col)
 
 }
 
 type sparks struct {
 	timer, timerMax        int
-	positions, speeds      []fxdV2
+	positions, speeds      []v.FxdV2
 	lives, maxlives, seeds []uint8
 	life                   int
 	sparksNo               int
 	sCol, eCol             rl.Color
 }
 
+// emits  sparks particles
 func newSparks(pos, mspeed V2, count int, maxradius, duration float64, sCol, eCol rl.Color) *sparks {
 	s := new(sparks)
 	s.sparksNo = count + rand.Intn(count/2)
 	speed := 0.5 + rnd()*1.5
-	s.positions = make([]fxdV2, s.sparksNo)
-	s.speeds = make([]fxdV2, s.sparksNo)
+	s.positions = make([]v.FxdV2, s.sparksNo)
+	s.speeds = make([]v.FxdV2, s.sparksNo)
 	s.lives = make([]uint8, s.sparksNo)
 	s.maxlives = make([]uint8, s.sparksNo)
 	s.seeds = make([]uint8, s.sparksNo)
@@ -85,7 +90,7 @@ func newSparks(pos, mspeed V2, count int, maxradius, duration float64, sCol, eCo
 	for i := 0; i < s.sparksNo; i++ {
 		angle += (360 / float64(s.sparksNo)) + rndSym(15)
 		s.positions[i] = pos.ToV2int()
-		sp := mspeed.Add(rotV(angle).MulA(5 * speed * (0.5 + rnd())))
+		sp := mspeed.Add(v.RotV(angle).MulA(5 * speed * (0.5 + rnd())))
 		s.speeds[i] = sp.ToV2int()
 		s.maxlives[i] = uint8(frames/2 + rand.Intn(frames/2))
 		s.seeds[i] = uint8(rand.Intn(256))
@@ -145,11 +150,12 @@ type explosion struct {
 	maxr, dur, t          float64
 }
 
+// emits new missile explosion particle
 func newExplosion(pos, speed V2, maxradius, duration float64) *explosion {
 	e := new(explosion)
 	e.position = pos
 	e.speed = speed
-	e.offs = e.position.Add(V2{rndSym(maxradius / 10), rndSym(maxradius / 10)})
+	e.offs = e.position.Add(V2{X: rndSym(maxradius / 10), Y: rndSym(maxradius / 10)})
 	e.maxr, e.dur = maxradius, duration
 	e.rstep = maxradius / (duration * FPS)
 	e.timerMax = int(duration * FPS)

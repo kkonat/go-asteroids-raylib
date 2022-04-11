@@ -5,31 +5,35 @@ import (
 	"image/color"
 	"log"
 	"math/rand"
+	qt "rlbb/lib/quadtree"
+	v "rlbb/lib/vector"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
+const minidist2 = PrefferredRockSize * PrefferredRockSize * 16
+
 func (g *game) constrainShip() {
 	const limit = 40.0
 	const getback = 0.5
-	if g.ship.pos.x < limit || g.ship.pos.x > g.gW-limit || g.ship.pos.y < limit || g.ship.pos.y > g.gH-limit {
+	if g.ship.pos.X < limit || g.ship.pos.X > g.gW-limit || g.ship.pos.Y < limit || g.ship.pos.Y > g.gH-limit {
 		if g.ship.isSliding {
-			g.ship.speed = V2MulA(g.ship.speed, 0.9)
+			g.ship.speed = g.ship.speed.MulA(0.9)
 			if g.ship.pos.Len2() < 0.01 {
 				g.ship.isSliding = false
 			}
 		} else {
-			if g.ship.pos.x < limit {
-				g.ship.speed.x = getback
+			if g.ship.pos.X < limit {
+				g.ship.speed.X = getback
 			}
-			if g.ship.pos.x > g.gW-limit {
-				g.ship.speed.x = -getback
+			if g.ship.pos.X > g.gW-limit {
+				g.ship.speed.X = -getback
 			}
-			if g.ship.pos.y < limit {
-				g.ship.speed.y = getback
+			if g.ship.pos.Y < limit {
+				g.ship.speed.Y = getback
 			}
-			if g.ship.pos.y > g.gH-limit {
-				g.ship.speed.y = -getback
+			if g.ship.pos.Y > g.gH-limit {
+				g.ship.speed.Y = -getback
 			}
 		}
 
@@ -43,15 +47,15 @@ func (g *game) constrainRocks() {
 	for rock := g.rocks.Front(); rock != nil; rock = rock.Next() {
 		count++
 		r := rock.Value.(*Rock)
-		if (r.pos.x+r.radius < limit && r.speed.x < 0) ||
-			(r.pos.x-r.radius > g.gW-limit && r.speed.x > 0) ||
-			(r.pos.y+r.radius < limit && r.speed.y < 0) ||
-			(r.pos.y-r.radius > g.gH-limit && r.speed.y > 0) {
+		if (r.pos.X+r.radius < limit && r.speed.X < 0) ||
+			(r.pos.X-r.radius > g.gW-limit && r.speed.X > 0) ||
+			(r.pos.Y+r.radius < limit && r.speed.Y < 0) ||
+			(r.pos.Y-r.radius > g.gH-limit && r.speed.Y > 0) {
 			if g.rocks.Len() < noPreferredRocks {
 				// respawn rock in a new sector, first randomly on the screen
 				r.randomize()
-				r.speed = V2{rnd()*rSpeedMax - rSpeedMax/2, rnd()*rSpeedMax - rSpeedMax/2}
-				r.pos = V2{rnd() * g.gW, rnd() * g.gH}
+				r.speed = V2{X: rnd()*rSpeedMax - rSpeedMax/2, Y: rnd()*rSpeedMax - rSpeedMax/2}
+				r.pos = V2{X: rnd() * g.gW, Y: rnd() * g.gH}
 
 				p := &r.pos     // these variables addes to make the
 				s := &r.speed   // switch statement below more redable
@@ -62,30 +66,30 @@ func (g *game) constrainRocks() {
 				switch sect { // move the rock off the screen
 				case 0: // left
 					{
-						p.x = -rad + limit //
-						if s.x < 0 {
-							s.x = -s.x
+						p.X = -rad + limit //
+						if s.X < 0 {
+							s.X = -s.X
 						}
 					}
 				case 1: // top
 					{
-						p.y = -rad + limit
-						if s.y < 0 {
-							s.x = -s.x
+						p.Y = -rad + limit
+						if s.Y < 0 {
+							s.X = -s.X
 						}
 					}
 				case 2: // right
 					{
-						p.x = g.gW + rad - limit
-						if s.x > 0 {
-							s.x = -s.x
+						p.X = g.gW + rad - limit
+						if s.X > 0 {
+							s.X = -s.X
 						}
 					}
 				case 3: // down
 					{
-						p.y = g.gH + rad - limit
-						if s.y > 0 {
-							s.y = -s.y
+						p.Y = g.gH + rad - limit
+						if s.Y > 0 {
+							s.Y = -s.Y
 						}
 					}
 				}
@@ -104,8 +108,8 @@ func (g *game) constrainMissiles() {
 	var i int
 	for i < len(g.missiles) {
 		p := g.missiles[i].getData().pos
-		if p.x <= limit || p.x > g.gW-limit ||
-			p.y <= limit || p.y > g.gH-limit {
+		if p.X <= limit || p.X > g.gW-limit ||
+			p.Y <= limit || p.Y > g.gH-limit {
 
 			g.deleteMissile(i)
 
@@ -125,15 +129,15 @@ func (g *game) deleteMissile(m int) {
 }
 
 type circle struct {
-	rect Rect
+	rect qt.Rect
 	p    V2
 	r    float64
 }
 
 func newCircleV2(p V2, r float64) *circle {
 	return &circle{
-		Rect{int32(p.x - r), int32(p.y - r),
-			int32(r * 2), int32(r * 2)},
+		qt.Rect{X: int32(p.X - r), Y: int32(p.Y - r),
+			W: int32(r * 2), H: int32(r * 2)},
 		p, r}
 }
 func (g *game) drawForceField() {
@@ -143,7 +147,7 @@ func (g *game) drawForceField() {
 			rl.Fade(color.RGBA{0, 200, 200, 255}, 0.25),
 			rl.Fade(color.RGBA{0, 240, 200, 255}, 0.0))
 		for a := float64(10) * rnd(); a < 360+float64(10)*rnd(); a += 1 + 10*rnd() {
-			p := cs(a).MulA(float64(forceFieldRadius) * rnd())
+			p := v.Cs(a).MulA(float64(forceFieldRadius) * rnd())
 			_lineThick(g.ship.pos, g.ship.pos.Add(p), rand.Float32()*20+10,
 				rl.Fade(color.RGBA{0, 100, 100, 127}, 0.05))
 			c++
@@ -153,7 +157,7 @@ func (g *game) drawForceField() {
 func (g *game) processForceField() {
 
 	if g.ship.forceField {
-		dSpeed := V2{0, 0}
+		dSpeed := V2{}
 
 		for r := g.rocks.Front(); r != nil; r = r.Next() {
 			rock := r.Value.(*Rock)
@@ -176,7 +180,7 @@ func (g *game) processForceField() {
 }
 
 func (g *game) processShipHits() {
-	v := cs(g.ship.rot)
+	v := v.Cs(g.ship.rot)
 
 	var circles [3]*circle
 
@@ -189,9 +193,9 @@ func (g *game) processShipHits() {
 	// }
 
 	shipBRect := g.ship.shape.bRect
-	g.RocksQtMutex.RLock()
-	potCols := g.RocksQt.MayCollide(shipBRect)
-	g.RocksQtMutex.RUnlock()
+
+	potCols := g.RocksQt.MayCollide(shipBRect, minidist2)
+
 	for _, r := range potCols {
 
 		for _, c := range circles {
@@ -200,19 +204,19 @@ func (g *game) processShipHits() {
 				// _disc(c.p, c.r, rl.Red)
 				if g.ship.shields > 0.7 {
 					g.ship.shields -= 0.7
-					g.sm.playFor(sScratch, 80)
+					g.sm.PlayFor(sScratch, 80)
 				} else {
 					if !debug {
 						g.addParticle(newSparks(g.ship.pos, g.ship.speed, 300, 260, 5, rl.White, rl.Red))
 						if !g.ship.destroyed {
-							g.sm.play(sExplodeShip)
+							g.sm.Play(sExplodeShip)
 						}
 						g.ship.destroyed = true
 					}
 					//game_over()
 				}
 			} else {
-				g.sm.stop(sScratch)
+				g.sm.Stop(sScratch)
 			}
 
 		}
@@ -252,35 +256,13 @@ func (g *game) processMissileHits() {
 		missile := g.missiles[mi]
 		mp := missile.getData().pos
 		missileBRect := missile.getData().shape.bRect
-		//fmt.Printf("Mi:%d ", mi)
 
-		potCols := g.RocksQt.MayCollide(missileBRect)
+		potCols := g.RocksQt.MayCollide(missileBRect, minidist2)
 
-		no, p := g.checkIfOntheList(potCols)
-		if no > 0 {
-			fmt.Printf("potcols has %d elements not from the list [%p]\nList:", no, p)
-		}
-		// else {
-		// 	fmt.Println("potcols ok")
-		// }
-
-		// cycle++
-		// failed := 0
-		// total := 0
-
-		// for _,p := range potCols {
-		// 	if !g.RocksQt.find(p) {
-		// 		failed++
-		// 	}
-		// 	total++
-		// }
-		// if failed > 0 {
-		// 	corrupted++
-		// 	corruptedPrcnt := float64(failed) / float64(total)
-		// 	corruptedMayCollides := float64(corrupted) / float64(cycle)
-		// 	fmt.Printf("Corruptions =%d last corrupted (%d / %d)=%d\n",
-		// 		int(corruptedMayCollides*100),
-		// 		failed, total, int(corruptedPrcnt*100))
+		// TODO delete
+		// no, p := g.checkIfOntheList(potCols)
+		// if no > 0 {
+		// 	fmt.Printf("potcols has %d elements not from the list [%p]\nList:", no, p)
 		// }
 
 		if debug {
@@ -295,15 +277,10 @@ func (g *game) processMissileHits() {
 		for i := range potCols {
 			r := potCols[i]
 
-			// if !g.RocksQt.find(potCols[i]) {
-			// 	fmt.Printf("potCols[%d]=%p not on QT\n", i, potCols[i])
-			// }
 			rp := r.pos
 			dist2 := rp.Sub(mp).Len2()
-			if dist2 < squared(r.radius+mr) { // hit
-				// explosion vFX
+			if dist2 < squared(r.radius+mr) && !r.delete { // hit
 				hitR := potCols[i]
-				fmt.Printf(" hit:%p", hitR)
 
 				distBonus := g.ship.pos.Sub(r.pos).Len() / 200
 				score := 1 + int((100/r.radius*distBonus/3)*g.weapons[g.curWeapon].scoreMult/4)
@@ -314,16 +291,9 @@ func (g *game) processMissileHits() {
 				g.addParticle(newSparks(missile.getData().pos, missile.getData().speed, 100, 100, 2.0, rl.Orange, rl.Red))
 
 				// sound
-				g.sm.playPM(sExpl, 0.5+rnd32())
+				g.sm.PlayPM(sExpl, 0.5+rnd32())
 
-				// if !g.RocksQt.find(hitR) {
-				// 	no, p := g.checkIfOntheList(potCols)
-				// 	fmt.Printf("MI:%d, look for %p, not found (%d wrong on the list [%p]) ", mi, hitR, no, p)
-				// 	g.RocksQt.Print(hitR)
-
-				// }
-				// fmt.Printf(" Remove-->: %d. %p result:", i, hitR)
-				g.RocksQt.Remove(hitR)
+				hitR.delete = true
 
 				// split rock
 				nr := r.split(missile.getData().pos, missile.getData().speed, 6)
@@ -334,16 +304,10 @@ func (g *game) processMissileHits() {
 						if g.rocks.Len() < maxRocks {
 							nr[i].buildShape()
 							g.rocks.PushBack(nr[i])
+							g.RocksQt.Insert(nr[i])
 						}
 					}
 				}
-				// find and delete rock - this definitively works OK
-				for re := g.rocks.Front(); re != nil; re = re.Next() {
-					if re.Value == hitR {
-						g.rocks.Remove(re)
-					}
-				}
-
 				g.deleteMissile(mi)
 				hit = true
 				break

@@ -6,10 +6,14 @@ import (
 	"math/rand"
 	"reflect"
 
+	"rlbb/lib/vector"
+
 	rl "github.com/gen2brain/raylib-go/raylib"
 	ns "github.com/ojrac/opensimplex-go"
 	"golang.org/x/exp/constraints"
 )
+
+type V2 = vector.V2
 
 var noise [256]V2
 
@@ -20,49 +24,49 @@ func _initNoise() {
 
 	n := ns.NewNormalized(rand.Int63())
 	for i := 0; i < 256; i++ {
-		noise[i] = V2{n.Eval2(float64(i)/scaleDown, 0), n.Eval2(float64(i)/scaleDown, 1)}
+		noise[i] = V2{X: n.Eval2(float64(i)/scaleDown, 0), Y: n.Eval2(float64(i)/scaleDown, 1)}
 	}
 
 	// blend start and end values in the array
 	for i, j := 256-blendRange, 0; j < blendRange; i, j = i+1, j+1 {
 		t := float64(j / blendRange)
-		noise[i] = V2{noise[i].x*t + noise[j].x*(1-t), noise[i].y*t + noise[j].y*(1-t)}
+		noise[i] = V2{X: noise[i].X*t + noise[j].X*(1-t), Y: noise[i].Y*t + noise[j].Y*(1-t)}
 		j++
 	}
 }
 
 func _noise1D(index uint8) float64 {
-	return noise[index].x
+	return noise[index].X
 }
 func _noise2D(index uint8) V2 {
 	return noise[index]
 }
 func _line(p1, p2 V2, col rl.Color) {
-	rl.DrawLine(int32(p1.x), int32(p1.y), int32(p2.x), int32(p2.y), col)
+	rl.DrawLine(int32(p1.X), int32(p1.Y), int32(p2.X), int32(p2.Y), col)
 }
 func _lineThick(p1, p2 V2, thickness float32, col rl.Color) {
-	rl.DrawLineEx(rl.Vector2{X: float32(p1.x), Y: float32(p1.y)}, rl.Vector2{X: float32(p2.x), Y: float32(p2.y)}, thickness, col)
+	rl.DrawLineEx(rl.Vector2{X: float32(p1.X), Y: float32(p1.Y)}, rl.Vector2{X: float32(p2.X), Y: float32(p2.Y)}, thickness, col)
 }
 func _circle(p1 V2, r float64, col rl.Color) {
-	rl.DrawCircleLines(int32(p1.x), int32(p1.y), float32(r), col)
+	rl.DrawCircleLines(int32(p1.X), int32(p1.Y), float32(r), col)
 }
 func _circleGradient(p1 V2, r float64, col1, col2 rl.Color) {
-	rl.DrawCircleGradient(int32(p1.x), int32(p1.y), float32(r), col1, col2)
+	rl.DrawCircleGradient(int32(p1.X), int32(p1.Y), float32(r), col1, col2)
 }
 func _disc(p1 V2, r float64, col rl.Color) {
-	rl.DrawCircle(int32(p1.x), int32(p1.y), float32(r), col)
+	rl.DrawCircle(int32(p1.X), int32(p1.Y), float32(r), col)
 }
 func _gradientdisc(p1 V2, r float64, col1, col2 rl.Color) {
-	rl.DrawCircleGradient(int32(p1.x), int32(p1.y), float32(r), col1, col2)
+	rl.DrawCircleGradient(int32(p1.X), int32(p1.Y), float32(r), col1, col2)
 }
 func _triangle(p1, p2, p3 V2, col rl.Color) {
 	rl.DrawTriangle(rlV2(p1), rlV2(p2), rlV2(p3), col)
 }
 func _rect(p1 V2, d int32, col rl.Color) {
-	rl.DrawRectangle(int32(p1.x), int32(p1.y), d, d, col)
+	rl.DrawRectangle(int32(p1.X), int32(p1.Y), d, d, col)
 }
-func _rectFxdV2(p1 fxdV2, d int32, col rl.Color) {
-	rl.DrawRectangle(int32(p1.x>>fxdFloatShift), int32(p1.y>>fxdFloatShift), d, d, col)
+func _rectFxdV2(p1 vector.FxdV2, d int32, col rl.Color) {
+	rl.DrawRectangle(p1.XInt32(), p1.YInt32(), d, d, col)
 }
 
 // writes text with multiple Colors
@@ -124,9 +128,19 @@ func _colorBlendA(t0 float64, col1, col2 rl.Color) rl.Color {
 		lerp(t, col1.A, col2.A)}
 }
 
+func _rlColorFromFloats(r, g, b float64) rl.Color {
+	return color.RGBA{R: uint8(255 * r), G: uint8(255 * g), B: uint8(255 * b), A: 255}
+}
+func _rlColorFromColor(c Color) rl.Color {
+	return color.RGBA{R: uint8(255 * c.R), G: uint8(255 * c.G), B: uint8(255 * c.B), A: 255}
+}
+func _ColorfromRlColor(c rl.Color) Color {
+	return newColorRGB(float64(c.R)/255, float64(c.G)/255, float64(c.B)/255)
+}
+
 // convert V2 to raylib's Vector2
 func rlV2(p V2) rl.Vector2 {
-	return rl.Vector2{X: float32(p.x), Y: float32(p.y)}
+	return rl.Vector2{X: float32(p.X), Y: float32(p.Y)}
 }
 func itoVec2(x, y int32) rl.Vector2 {
 	return rl.Vector2{X: float32(x), Y: float32(y)}

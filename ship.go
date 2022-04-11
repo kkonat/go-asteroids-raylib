@@ -1,6 +1,8 @@
 package main
 
 import (
+	v "rlbb/lib/vector"
+
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
@@ -21,7 +23,7 @@ type ship struct {
 
 const S = 16
 
-var shipShape = []V2{{-S / 2, -S}, {0, S}, {S / 2, -S}}
+var shipShape = []V2{{X: S / 2, Y: -S}, {X: 0, Y: S}, {X: -S / 2, Y: -S}}
 
 func newShip(posX, posY, mass, fuel float64) *ship {
 
@@ -32,7 +34,7 @@ func newShip(posX, posY, mass, fuel float64) *ship {
 	s.destroyed = false
 	s.shape = newShape(shipShape)
 
-	s.pos.x, s.pos.y = posX, posY
+	s.pos.X, s.pos.Y = posX, posY
 	// s.m.rot = rnd() * 360
 	// s.m.speed = cs(s.m.rot)
 
@@ -45,7 +47,7 @@ func newShip(posX, posY, mass, fuel float64) *ship {
 
 func (s *ship) chargeUp() {
 	if !s.destroyed {
-		dist := V2{1655, 400}.Sub(s.pos).Len()
+		dist := V2{X: 1655, Y: 400}.Sub(s.pos).Len()
 		chUp := 16 / dist
 		s.energy += chUp
 		if s.energy > 1000 {
@@ -60,7 +62,7 @@ func (s *ship) chargeUp() {
 func (s *ship) Draw() {
 	if !s.destroyed {
 		// draw ship
-		s.shape.Draw(s.pos, s.rot, rl.DarkGray, s.col)
+		s.shape.Draw(s.pos, s.rot, rl.Black, s.col)
 
 		// draw flame
 		disturb := _noise2D(s.cycle * 4).MulA(6).SubA(3)
@@ -72,7 +74,7 @@ func (s *ship) Draw() {
 		_lineThick(p1, p2, 4.1, c)
 
 		// animate
-		s.speed = V2MulA(s.speed, 0.9975)
+		s.speed = s.speed.MulA(0.9975)
 		s.rotSpeed *= 0.97
 
 		// animate noise
@@ -85,7 +87,7 @@ func (s *ship) thrust(fuelCons float64) {
 		force := fuelCons
 
 		a := force * 0.1
-		s.thr = cs(s.rot).MulA(a)
+		s.thr = v.Cs(s.rot).MulA(a)
 		s.speed = s.speed.Add(s.thr)
 	}
 }

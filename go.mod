@@ -1,4 +1,4 @@
-module github.com/kkonat/rl-bb
+module rlbb
 
 go 1.18
 

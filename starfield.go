@@ -1,9 +1,6 @@
 package main
 
 import (
-	"fmt"
-	"math/rand"
-
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
@@ -29,27 +26,27 @@ func newStarfield(w, h int32, time []float32) *starfield {
 	sf := new(starfield)
 	sf.time = time
 	sf.w, sf.h = w, h
-	var s star
+	// var s star
 
-	sf.stars = make([]star, starsNo)
-	for i := 0; i < starsNo; i++ {
-		s.x = rand.Float32() * float32(w)
-		s.y = rand.Int31n(h)
-		s.speed = rand.Float32() * 5.0
-		s.r = uint8(rand.Int31n(40) * 3)
-		sf.stars[i] = s
-	}
+	// sf.stars = make([]star, starsNo)
+	// for i := 0; i < starsNo; i++ {
+	// 	s.x = rand.Float32() * float32(w)
+	// 	s.y = rand.Int31n(h)
+	// 	s.speed = rand.Float32() * 5.0
+	// 	s.r = uint8(rand.Int31n(40) * 3)
+	// 	sf.stars[i] = s
+	// }
 	img := rl.LoadImage("res/Space.png")
 	rl.ImageCrop(img, rl.Rectangle{X: 0, Y: 0, Width: float32(w), Height: float32(h)})
 	sf.starfTex = rl.LoadTextureFromImage(img)
 	rl.UnloadImage(img)
 	sf.shader = rl.LoadShader("shaders/base.vs", "shaders/starfield.fs")
 
-	sf.time[0] = 321
+	sf.time[0] = 9321
 	sf.iResolution = make([]float32, 2)
 	sf.iResolution[0], sf.iResolution[1] = float32(sf.w), float32(sf.h)
-	sf.timeLoc = rl.GetShaderLocation(sf.shader, "time")
-	fmt.Println("sf.timeLoc =", sf.timeLoc)
+	rl.GetShaderLocation(sf.shader, "time")
+
 	rl.SetShaderValue(sf.shader, rl.GetShaderLocation(sf.shader, "iResolution"), sf.iResolution, rl.ShaderUniformVec2)
 	return sf
 }

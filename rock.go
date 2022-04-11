@@ -3,6 +3,8 @@ package main
 import (
 	"math"
 	"math/rand"
+	qt "rlbb/lib/quadtree"
+	v "rlbb/lib/vector"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
@@ -12,13 +14,14 @@ type Rock struct {
 	motion
 	radius float64
 	mass   float64
+	delete bool
 }
 
-func (r *Rock) bRect() Rect {
-	x := int32(r.pos.x)
-	y := int32(r.pos.y)
+func (r *Rock) BRect() qt.Rect {
+	x := int32(r.pos.X)
+	y := int32(r.pos.Y)
 	rad := int32(r.radius)
-	return Rect{x - rad, y - rad, rad * 2, rad * 2}
+	return qt.Rect{X: x - rad, Y: y - rad, W: rad * 2, H: rad * 2}
 }
 
 func (r *Rock) randomize() {
@@ -31,8 +34,8 @@ func (r *Rock) randomize() {
 func newRockRandom(g *game) *Rock {
 	r := new(Rock)
 	r.randomize()
-	r.pos = V2{rnd() * g.gW, rnd() * g.gH}
-	r.speed = V2{rnd()*rSpeedMax*2.0 - rSpeedMax, rnd()*rSpeedMax*2.0 - rSpeedMax}
+	r.pos = V2{X: rnd() * g.gW, Y: rnd() * g.gH}
+	r.speed = V2{X: rnd()*rSpeedMax*2.0 - rSpeedMax, Y: rnd()*rSpeedMax*2.0 - rSpeedMax}
 	r.rotSpeed = rnd()*0.2 - 0.1
 	return r
 }
@@ -53,34 +56,34 @@ func (r *Rock) buildShape() {
 	for i := 0; i < n; i++ {
 		angle += step + rnd()*step/2 - step/4
 		r1 := r.radius + rnd()*r.radius/4 - r.radius/8
-		p := cs(angle)
+		p := v.Cs(angle)
 		data[i] = p.MulA(r1)
 	}
 	r.shape = newShape(data)
 }
 
-func (g *game)generateRocks( preferredRocks int) {
+func (g *game) generateRocks(preferredRocks int) {
 
 	const safeCircle = 300
-	cX, cY := g.ship.pos.x, g.ship.pos.y
+	cX, cY := g.ship.pos.X, g.ship.pos.Y
 	i := 0
-	for i < preferredRocks { // ( cx +r )  ( nr.x +nr.r)
+	for i < preferredRocks { // ( cx +r )  ( nr.X +nr.r)
 		nr := newRockRandom(g)
-		if cX+safeCircle < nr.pos.x+nr.radius || cX-safeCircle > nr.pos.x-nr.radius ||
-			cY+safeCircle < nr.pos.y+nr.radius || cY-safeCircle > nr.pos.y-nr.radius {
+		if cX+safeCircle < nr.pos.X+nr.radius || cX-safeCircle > nr.pos.X-nr.radius ||
+			cY+safeCircle < nr.pos.Y+nr.radius || cY-safeCircle > nr.pos.Y-nr.radius {
 			g.rocks.PushBack(nr)
 			i++
 		}
 	}
 
 }
-func (r *Rock) Draw() { r.shape.DrawThin(r.pos, r.rot, rl.Black, rl.DarkGray, 0.75) }
+func (r *Rock) Draw() { r.shape.DrawThin(r.pos, r.rot, rl.Black, rl.White, 0.75) }
 
 func (r *Rock) split(hitat, speed V2, n int) []*Rock {
 
 	rockDist2 := func(c1, c2 *Rock) float64 {
-		return (c1.pos.x-c2.pos.x)*(c1.pos.x-c2.pos.x) +
-			(c1.pos.y-c2.pos.y)*(c1.pos.y-c2.pos.y)
+		return (c1.pos.X-c2.pos.X)*(c1.pos.X-c2.pos.X) +
+			(c1.pos.Y-c2.pos.Y)*(c1.pos.Y-c2.pos.Y)
 	}
 	touches := func(which int, allRocks []*Rock) (bool, int) {
 		for j, rock := range allRocks {
@@ -104,7 +107,7 @@ func (r *Rock) split(hitat, speed V2, n int) []*Rock {
 	for i := 0; i < n; i++ {
 		dist := r.radius*0.75 - rnd()*r.radius/4
 		torim = min(torim, r.radius-dist)
-		newRocks[i] = newRockAt(V2{r.pos.x + math.Sin(alpha)*dist, r.pos.y + math.Cos(alpha)*dist}, V2{0, 0})
+		newRocks[i] = newRockAt(V2{X: r.pos.X + math.Sin(alpha)*dist, Y: r.pos.Y + math.Cos(alpha)*dist}, V2{})
 		frozen[i] = false
 		alpha += alphastep
 	}
@@ -177,7 +180,7 @@ func (r *Rock) split(hitat, speed V2, n int) []*Rock {
 			break
 		}
 	}
-	center := V2{0, 0} // calculate new center of the rocks group and calculate masses
+	center := V2{} // calculate new center of the rocks group and calculate masses
 	for i, r := range newRocks {
 		r.radius *= 1.2
 		newRocks[i].mass = squared(r.radius)
@@ -186,12 +189,12 @@ func (r *Rock) split(hitat, speed V2, n int) []*Rock {
 	center = center.DivA(float64(len(newRocks)))
 
 	for i, ir := range newRocks {
-		explodev := ir.pos.Sub(center).Norm() // force throwing rocks outside
-		rotv := V2{-explodev.y, explodev.x}   //perpendicular
-		rotv = rotv.MulA(r.rotSpeed)          // centrifugal force
-		explthrust := r.pos.Sub(hitat).Norm() // thrust from the hit point
-		missilethr := speed.Norm()            // missile speedd contribution
-		masscontrib := math.Sqrt(ir.mass) / 5 // mass impact, larger move less
+		explodev := ir.pos.Sub(center).Norm()     // force throwing rocks outside
+		rotv := V2{X: -explodev.Y, Y: explodev.X} //perpendicular
+		rotv = rotv.MulA(r.rotSpeed)              // centrifugal force
+		explthrust := r.pos.Sub(hitat).Norm()     // thrust from the hit point
+		missilethr := speed.Norm()                // missile speedd contribution
+		masscontrib := math.Sqrt(ir.mass) / 5     // mass impact, larger move less
 
 		newspeed := explodev.Add(rotv).Add(explthrust).Add(missilethr).DivA(masscontrib) // compute new rock speed
 		newRocks[i].speed = r.speed.Add(newspeed)                                        // add it

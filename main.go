@@ -10,6 +10,7 @@ import (
 )
 
 var ms rl.Music
+var Game *game
 
 func main() {
 	// By default, Go programs run with GOMAXPROCS set to the number
@@ -29,85 +30,92 @@ func main() {
 	rand.Seed(time.Now().UnixNano())
 	_initNoise()
 
-	g := newGame(1440, 720)
+	Game = newGame(1440, 720)
 	defer func() {
 		rl.UnloadMusicStream(ms)
-		g.finalize()
+		Game.finalize()
 	}()
 
 	for !rl.WindowShouldClose() {
-		g.processKeys()
-		g.processMouse()
-		g.playMessages()
-		g.drawAndUpdate()
+		Game.processKeys()
+		Game.processMouse()
+		Game.playMessages()
+		Game.GameDraw()
+		Game.GameUpdate()
 	}
 }
 
+var fflight *OmniLight
+var fflightIdx int
+
 func (g *game) processKeys() {
 	if rl.IsKeyPressed('Q') {
-		wpn := g.weapons[g.curWeapon]
+		wpn := Game.weapons[Game.curWeapon]
 		cost := int(20 * wpn.cost)
-		if g.ship.cash > cost {
-			g.sm.play(sMissilesDlvrd)
-			g.addParticle(newTextPart(g.ship.pos, g.ship.speed.MulA(0.5),
+		if Game.ship.cash > cost {
+			Game.sm.Play(sMissilesDlvrd)
+			Game.addParticle(newTextPart(Game.ship.pos, Game.ship.speed.MulA(0.5),
 				"+ 20 x "+wpn.name, 20, 1, 1, true, rl.Purple, rl.DarkPurple))
-			g.ship.cash -= cost
+			Game.ship.cash -= cost
 			wpn.curCap += 20
-			g.weapons[g.curWeapon] = wpn
+			Game.weapons[Game.curWeapon] = wpn
 		}
 	}
 	if rl.IsKeyPressed('M') {
-		if !g.sm.mute {
-			g.sm.stopAll()
+		if !Game.sm.Mute {
+			Game.sm.StopAll()
 		}
-		g.sm.mute = !g.sm.mute
+		Game.sm.Mute = !Game.sm.Mute
 
 	}
 	if rl.IsKeyDown('A') { // rotate left
-		g.ship.rotate(-.2)
+		Game.ship.rotate(-.2)
 	}
 	if rl.IsKeyPressed('S') { // small thrust
-		g.sm.play(sThrust)
-		g.ship.isSliding = false
+		Game.sm.Play(sThrust)
+		Game.ship.isSliding = false
 	}
 	if rl.IsKeyDown('S') { // hold thrust
-		g.ship.thrust(0.5)
+		Game.ship.thrust(0.5)
 	}
 	if rl.IsKeyReleased('S') { // end thrust
-		g.ship.thrust(0)
-		g.ship.isSliding = true
-		g.sm.stop(sThrust)
+		Game.ship.thrust(0)
+		Game.ship.isSliding = true
+		Game.sm.Stop(sThrust)
 	}
 	if rl.IsKeyPressed(';') { //forceField
-
-		g.ship.forceField = true
-		g.sm.play(sForceField)
+		fflight = &OmniLight{Game.ship.pos, newColorRGBint(0, 200, 200), 900}
+		fflightIdx = Game.Lights.AddLight(fflight)
+		Game.ship.forceField = true
+		Game.sm.Play(sForceField)
 	}
 	if rl.IsKeyDown(';') {
-		if g.ship.energy > 0 {
-			g.ship.energy -= 0.1
+		fflight.Pos = Game.ship.pos
+		if Game.ship.energy > 0 {
+			Game.ship.energy -= 0.1
 		}
 	}
 	if rl.IsKeyReleased(';') { // hold thrust
-		g.ship.forceField = false
-		g.sm.stop(sForceField)
+		Game.Lights.DeleteLight(fflightIdx)
+		Game.ship.forceField = false
+		Game.sm.Stop(sForceField)
 	}
 	if rl.IsKeyPressed('L') {
-		if g.curWeapon > 0 {
-			g.curWeapon--
+		if Game.curWeapon > 0 {
+			Game.curWeapon--
 		} else {
-			g.curWeapon = len(g.weapons) - 1
+			Game.curWeapon = len(Game.weapons) - 1
 		}
 
-		str := fmt.Sprintf(">%s<", (g.weapons)[g.curWeapon].name)
-		g.addParticle(newTextPart(g.ship.pos, g.ship.speed.MulA(0.5),
+		str := fmt.Sprintf(">%s<", (Game.weapons)[Game.curWeapon].name)
+		Game.addParticle(newTextPart(Game.ship.pos, Game.ship.speed.MulA(0.5),
 			str, 20, 1, 1, true, rl.Purple, rl.Red))
 	} // cycle weapon left
 	if rl.IsKeyPressed('\'') {
-		g.curWeapon++
-		g.curWeapon %= len(g.weapons)
-		str := fmt.Sprintf(">%s<", g.weapons[g.curWeapon].name)
-		g.addParticle(newTextPart(g.ship.pos, g.ship.speed.MulA(0.5),
+		Game.curWeapon++
+		Game.curWeapon %= len(Game.weapons)
+		str := fmt.Sprintf(">%s<", Game.weapons[Game.curWeapon].name)
+		Game.addParticle(newTextPart(Game.ship.pos, Game.ship.speed.MulA(0.5),
 			str, 20, 1, 1, true, rl.Purple, rl.Red))
 
 	} // cycle weapon right
@@ -116,54 +124,54 @@ func (g *game) processKeys() {
 		debug = !debug
 	}
 	if rl.IsKeyPressed('R') { // reset shields
-		g.sm.play(sOinx)
-		g.ship.pos = V2{g.gW / 2, g.gH / 2}
-		g.ship.speed = V2{0, 0}
-		g.ship.shields = 100
-		g.ship.energy = 1000
-		g.ship.destroyed = false
+		Game.sm.Play(sOinx)
+		Game.ship.pos = V2{X: Game.gW / 2, Y: Game.gH / 2}
+		Game.ship.speed = V2{}
+		Game.ship.shields = 100
+		Game.ship.energy = 1000
+		Game.ship.destroyed = false
 	}
 	if rl.IsKeyPressed('F') { // reset shields
-		if g.ship.energy > 130 && g.ship.shields+13 < 100 {
-			g.addParticle(newTextPart(g.ship.pos, g.ship.speed.MulA(0.5),
+		if Game.ship.energy > 130 && Game.ship.shields+13 < 100 {
+			Game.addParticle(newTextPart(Game.ship.pos, Game.ship.speed.MulA(0.5),
 				"shields +13", 20, 1, 0.5, true, rl.Yellow, rl.Gold))
-			g.sm.play(sChargeUp)
-			g.ship.shields += 13
-			g.ship.energy -= 130
+			Game.sm.Play(sChargeUp)
+			Game.ship.shields += 13
+			Game.ship.energy -= 130
 		}
 	}
 	if rl.IsKeyPressed('P') { // pause
-		g.paused = !g.paused
-		g.sm.stopAll()
+		Game.paused = !Game.paused
+		Game.sm.StopAll()
 	}
 	if rl.IsKeyPressed('W') { // big thrust
-		g.sm.play(sThrust)
-		g.ship.isSliding = false
+		Game.sm.Play(sThrust)
+		Game.ship.isSliding = false
 	}
 	if rl.IsKeyDown('W') {
-		g.ship.thrust(1.0)
+		Game.ship.thrust(1.0)
 	}
 	if rl.IsKeyReleased('W') { // -----
-		g.ship.thrust(0)
-		g.ship.isSliding = true
-		g.sm.stop(sThrust)
+		Game.ship.thrust(0)
+		Game.ship.isSliding = true
+		Game.sm.Stop(sThrust)
 	}
 	if rl.IsKeyDown('D') { // rotate right
-		g.ship.rotate(.2)
+		Game.ship.rotate(.2)
 	}
 	if rl.IsKeyPressed(rl.KeyLeftControl) { // fire
-		wpn := g.weapons[g.curWeapon]
+		wpn := Game.weapons[Game.curWeapon]
 		if wpn.curCap > 0 {
 			wpn.curCap -= 1
-			g.weapons[g.curWeapon] = wpn
-			if len(g.missiles) < maxMissiles {
-				launchMissile(g, g.curWeapon)
-				g.sm.play(sLaunch)
+			Game.weapons[Game.curWeapon] = wpn
+			if len(Game.missiles) < maxMissiles {
+				launchMissile(g, Game.curWeapon)
+				Game.sm.Play(sLaunch)
 			}
 		}
 	}
 	if rl.IsKeyDown(rl.KeyTab) { // slow down rotation
-		g.ship.rotSpeed *= 0.9
+		Game.ship.rotSpeed *= 0.9
 	}
 
 }

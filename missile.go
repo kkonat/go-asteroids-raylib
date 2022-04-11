@@ -3,19 +3,24 @@ package main
 import (
 	"math"
 	"math/rand"
+	v "rlbb/lib/vector"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-var missileShape = []V2{{-1.25, 12.}, {-1.2, 3.12}, {-4.4, 0}, {4.4, 0}, {1.25, 3.12}, {1.25, 12.5}, {0, 20}}
+var missileShape = []v.V2{
+	{X: -1.25, Y: 12.}, {X: -1.2, Y: 3.12},
+	{X: -4.4, Y: 0}, {X: 4.4, Y: 0},
+	{X: 1.25, Y: 3.12}, {X: 1.25, Y: 12.5},
+	{X: 0, Y: 20}}
 
 type weapon struct {
-	name     string
-	maxCap   int
-	curCap   int
-	lowLimit int
+	name      string
+	maxCap    int
+	curCap    int
+	lowLimit  int
 	scoreMult float64
-	cost     float64
+	cost      float64
 }
 
 const (
@@ -46,7 +51,7 @@ type normalMissile struct {
 }
 
 func (m *normalMissile) getData() *aMissile       { return &m.aMissile }
-func (m *normalMissile) Draw()                    { m.shape.Draw(m.motion.pos, m.motion.rot, rl.DarkGray, rl.DarkGray) }
+func (m *normalMissile) Draw()                    { m.shape.Draw(m.motion.pos, m.motion.rot, rl.Black, rl.DarkGray) }
 func (m *normalMissile) Move(_ *game, dt float64) { m.aMissile.Move(dt) }
 
 type guidedMissile struct {
@@ -61,7 +66,7 @@ func (m *guidedMissile) Draw() {
 	if m.targetRock != nil {
 		_lineThick(m.pos.Add(m.speed.MulA(6)), m.targetRock.pos, 10, rl.Color{0, 100, 100, 90})
 	}
-	m.shape.Draw(m.motion.pos, m.motion.rot, rl.Gray, rl.Gray)
+	m.shape.Draw(m.motion.pos, m.motion.rot, rl.Black, rl.Gray)
 }
 func (m *guidedMissile) Move(g *game, dt float64) {
 
@@ -88,7 +93,7 @@ func (m *guidedMissile) Move(g *game, dt float64) {
 		if m.targetRock != nil {
 			v2 := m.speed.Norm()
 			v1 := m.targetRock.pos.Sub(m.pos).Norm()
-			angle := math.Atan2(v1.y*v2.x-v1.x*v2.y, v1.x*v2.x+v1.y*v2.y)
+			angle := math.Atan2(v1.Y*v2.X-v1.X*v2.Y, v1.X*v2.X+v1.Y*v2.Y)
 			angledeg := angle * rl.Rad2deg
 			m.rotSpeed = angledeg*t/30 +
 				_noise1D(uint8(m.life/2+int(m.randoffs)))*5 - 2.5 // random disturbance
@@ -96,7 +101,7 @@ func (m *guidedMissile) Move(g *game, dt float64) {
 		}
 	}
 	spd := m.launchSpeed
-	m.speed = cs(m.rot).MulA(spd)
+	m.speed = v.Cs(m.rot).MulA(spd)
 
 	speed := m.speed.MulA(dt)
 	m.pos.Incr(speed)
@@ -111,14 +116,14 @@ func newMissile(pos V2, spd, rot float64) *aMissile {
 	m.shape = newShape(missileShape)
 	m.pos = pos
 	m.rot = rot
-	dir := cs(rot)
+	dir := v.Cs(rot)
 	m.speed = dir.MulA(m.launchSpeed)
 
 	return m
 }
 func launchMissile(g *game, mtype int) {
 
-	sSpd := V2len(g.ship.speed)
+	sSpd := g.ship.speed.Len()
 
 	switch mtype {
 	case missileNormal:

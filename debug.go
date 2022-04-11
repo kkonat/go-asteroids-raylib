@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	qt "rlbb/lib/quadtree"
 	"runtime"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -16,31 +17,31 @@ const (
 )
 
 // -- debug
-func drawQt(qt *QuadTree[*Rock]) {
+func DrawQt(qt *qt.QuadTree[*Rock]) {
 	if len(qt.Objects) != 0 {
-		rl.DrawRectangleLines(qt.Bounds.x+2, qt.Bounds.y+2, qt.Bounds.w-4, qt.Bounds.h-4, rl.DarkGray)
+		rl.DrawRectangleLines(qt.Bounds.X+2, qt.Bounds.Y+2, qt.Bounds.W-4, qt.Bounds.H-4, rl.DarkGray)
 		str := fmt.Sprintf("#%d", len(qt.Objects))
-		rl.DrawText(str, qt.Bounds.x+2, qt.Bounds.y+20, 16, rl.Gray)
+		rl.DrawText(str, qt.Bounds.X+2, qt.Bounds.Y+20, 16, rl.Gray)
 	}
 	for i := 0; i < 4; i++ {
 		if qt.Nodes[i] != nil {
-			drawQt(qt.Nodes[i])
+			DrawQt(qt.Nodes[i])
 		}
 	}
 }
 func (gme *game) debugQt() {
 	if debug {
 		if debugShipPos {
-			str := fmt.Sprintf("[%d,%d]", int32(gme.ship.pos.x), int32(gme.ship.pos.y))
-			rl.DrawText(str, int32(gme.ship.pos.x), int32(gme.ship.pos.y), 20, rl.Gray)
+			str := fmt.Sprintf("[%d,%d]", int32(gme.ship.pos.X), int32(gme.ship.pos.Y))
+			rl.DrawText(str, int32(gme.ship.pos.X), int32(gme.ship.pos.Y), 20, rl.Gray)
 		}
 
 		if debugRocksQt {
-			gme.RocksQtMutex.RLock()
-			potCols := gme.RocksQt.MayCollide(gme.ship.shape.bRect)
-			gme.RocksQtMutex.RUnlock()
+
+			potCols := gme.RocksQt.MayCollide(gme.ship.shape.bRect, minidist2)
+
 			for _, c := range potCols {
-				rl.DrawRectangleLines(c.bRect().x, c.bRect().y, c.bRect().w, c.bRect().h, rl.DarkBrown)
+				rl.DrawRectangleLines(c.BRect().X, c.BRect().Y, c.BRect().W, c.BRect().H, rl.DarkBrown)
 			}
 		}
 

@@ -9,6 +9,9 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 
 	// "github.com/golang-ui/nuklear/nk"	// interface, maybe
+	qt "rlbb/lib/quadtree"
+	sm "rlbb/lib/soundmanager"
+
 	"golang.org/x/exp/constraints"
 )
 
@@ -30,20 +33,19 @@ const (
 )
 
 type game struct {
-	sm           *soundManager
-	sprm         *spriteManager
-	sf           *starfield
-	time         []float32 // gsls uniform [1]float32
-	ship         *ship
-	rocks        list.List
-	missiles     []missile
-	particles    []particle
-	RocksQt      *QuadTree[*Rock]
-	RocksQtMutex sync.RWMutex
+	sm        *sm.SoundManager
+	sprm      *spriteManager
+	sf        *starfield
+	time      []float32 // gsls uniform [1]float32
+	ship      *ship
+	rocks     list.List
+	missiles  []missile
+	particles []particle
+	RocksQt   *qt.QuadTree[*Rock]
 
-	sW, sH int32
-	gW, gH float64
-
+	sW, sH        int32
+	gW, gH        float64
+	Lights        *Lighting
 	paused        bool
 	cursorEnabled bool
 	curWeapon     int
@@ -57,30 +59,67 @@ var debug bool
 var tnow, tprev, mAmmoLastPlayed, mShieldsLastPlayed int64
 var tickTock uint8
 
+const (
+	sSpace = iota
+	sScore
+	sMissilesDlvrd
+	sThrust
+	sExpl
+	sLaunch
+	sShieldsLow
+	sAmmoLow
+	sOinx
+	sExplodeShip
+	sScratch
+	sChargeUp
+	sForceField
+)
+
+var redsun *OmniLight
+
 func newGame(w, h int32) *game {
 
 	g := new(game)
-	g.weapons = make(map[int]weapon)
-	g.weapons[missileNormal] = weapon{"missile", 100, 100, 20, 4.0, 1.6}
-	g.weapons[missileTriple] = weapon{"triple", 100, 100, 20, 1.3, 4.8}
-	g.weapons[missileGuided] = weapon{"guided missile", 20, 20, 4, 3.0, 3.2}
-	g.sW, g.sH = w, h
-	g.gW, g.gH = float64(w), float64(h)
+	soundFiles := map[int]sm.SoundFile{
+		// Id			  filename        vol  pitch
+		sSpace:         {Fname: "res/space.ogg", Vol: 0.5, Pitch: 1.0},
+		sScore:         {Fname: "res/score.mp3", Vol: 0.1, Pitch: 1.0},
+		sMissilesDlvrd: {Fname: "res/missiles-delivered.ogg", Vol: 0.5, Pitch: 1.0},
+		sThrust:        {Fname: "res/thrust.ogg", Vol: 0.5, Pitch: 1.0},
+		sExpl:          {Fname: "res/expl.ogg", Vol: 0.5, Pitch: 0.65},
+		sLaunch:        {Fname: "res/launch.ogg", Vol: 0.5, Pitch: 1.0},
+		sShieldsLow:    {Fname: "res/warning-shields-low.ogg", Vol: 0.3, Pitch: 1.0},
+		sAmmoLow:       {Fname: "res/warning-ammo-low.ogg", Vol: 0.3, Pitch: 1.0},
+		sOinx:          {Fname: "res/oinxL.ogg", Vol: 0.5, Pitch: 1.0},
+		sExplodeShip:   {Fname: "res/shipexplode.ogg", Vol: 1.0, Pitch: 1.0},
+		sScratch:       {Fname: "res/metalScratch.ogg", Vol: 0.2, Pitch: 1.0},
+		sChargeUp:      {Fname: "res/chargeup.ogg", Vol: 0.2, Pitch: 1.0},
+		sForceField:    {Fname: "res/forcefield2.ogg", Vol: 0.5, Pitch: 1.0},
+	}
 
+	g.sm = sm.NewSoundManager(startMuted, soundFiles)
+
+	g.sm.EnableLoops(sSpace, sScore)
+	g.SetScreenSize(w, h)
+	g.Lights = &Lighting{}
+	g.Lights.AddLight(OmniLight{V2{1440, 400}, _ColorfromRlColor(rl.Purple), 900})
+
+	redsun = &OmniLight{V2{-100, 100}, _ColorfromRlColor(rl.Red), 300}
+	g.Lights.AddLight(redsun)
 	rl.SetConfigFlags(rl.FlagMsaa4xHint | rl.FlagVsyncHint | rl.FlagWindowMaximized)
 	rl.InitWindow(w, h, caption)
 
 	rl.SetTargetFPS(FPS)
 
 	g.missiles = make([]missile, 0, maxMissiles)
-	g.RocksQt = newNode[*Rock](0, Rect{0, 0, w, h})
+	g.RocksQt = qt.NewNode[*Rock](0, qt.Rect{X: 0, Y: 0, W: g.sW, H: g.sH})
 	g.initMouse()
 	g.paused = false
 
 	g.time = make([]float32, 1)
-	g.sf = newStarfield(w, h, g.time)
+	g.sf = newStarfield(g.sW, g.sH, g.time)
 	debug = startWithDebugOn
-	g.sm = newSoundManager(startMuted)
+
 	g.sprm = newSpriteManager()
 
 	g.ship = newShip(float64(w/2), float64(h/2), 1000, 1000)
@@ -93,7 +132,16 @@ func newGame(w, h int32) *game {
 	rl.GenTextureMipmaps(&vectorFont.Texture)
 	rl.SetTextureFilter(vectorFont.Texture, rl.FilterBilinear)
 
+	g.weapons = make(map[int]weapon)
+	g.weapons[missileNormal] = weapon{"missile", 100, 100, 20, 4.0, 1.6}
+	g.weapons[missileTriple] = weapon{"triple", 100, 100, 20, 1.3, 4.8}
+	g.weapons[missileGuided] = weapon{"guided missile", 20, 20, 4, 3.0, 3.2}
+
 	return g
+}
+func (g *game) SetScreenSize(w, h int32) {
+	g.sW, g.sH = w, h
+	g.gW, g.gH = float64(w), float64(h)
 }
 
 func (g *game) playMessages() {
@@ -102,7 +150,7 @@ func (g *game) playMessages() {
 		t := time.Now().Local().Unix()
 		if mAmmoLastPlayed == 0 || t-mAmmoLastPlayed > 15 {
 			{
-				g.sm.playM(sAmmoLow)
+				g.sm.PlayM(sAmmoLow)
 				mAmmoLastPlayed = time.Now().Local().Unix()
 			}
 		}
@@ -113,7 +161,7 @@ func (g *game) playMessages() {
 		t := time.Now().Local().Unix()
 		if mShieldsLastPlayed == 0 || t-mShieldsLastPlayed > 17 {
 			{
-				g.sm.playM(sShieldsLow)
+				g.sm.PlayM(sShieldsLow)
 				mShieldsLastPlayed = time.Now().Local().Unix()
 			}
 		}
@@ -156,7 +204,6 @@ func (g *game) drawStatusBar() {
 		}
 		rl.DrawText("**** GAME PAUSED ***", 20, g.sH-20, 20, col)
 	}
-	tickTock++
 }
 
 func (gme *game) addParticle(p particle) {
@@ -175,9 +222,13 @@ func (gme *game) animateParticles() {
 		}
 	}
 }
-func (gme *game) drawRocks() {
+func (gme *game) drawAndDeleteRocks() {
 	for el := gme.rocks.Front(); el != nil; el = el.Next() {
-		el.Value.(*Rock).Draw()
+		if el.Value.(*Rock).delete {
+			gme.rocks.Remove(el)
+		} else {
+			el.Value.(*Rock).Draw()
+		}
 	}
 }
 func (gme *game) drawMissiles() {
@@ -207,7 +258,7 @@ func (gme *game) moveMissiles(dt float64) {
 }
 
 func (gme *game) buildRocksQTree() {
-	gme.RocksQt = newNode[*Rock](0, Rect{0, 0, gme.sW, gme.sH})
+	gme.RocksQt = qt.NewNode[*Rock](0, qt.Rect{X: 0, Y: 0, W: gme.sW, H: gme.sH})
 
 	for el := gme.rocks.Front(); el != nil; el = el.Next() {
 		gme.RocksQt.Insert(el.Value.(*Rock))
@@ -216,26 +267,16 @@ func (gme *game) buildRocksQTree() {
 
 var wg sync.WaitGroup
 
-func (gme *game) drawAndUpdate() {
-
-	if !gme.paused {
-		if !gme.sm.isPlaying(sSpace) {
-			gme.sm.play(sSpace)
-
-		}
-		if !gme.sm.isPlaying(sScore) {
-			gme.sm.play(sScore)
-		}
-	}
-	// DRAWING ---------------------------------------------------------------------
+func (gme *game) GameDraw() {
 	rl.BeginDrawing()
 
 	rl.ClearBackground(rl.Black)
 	gme.sf.draw() // draw starfield
 	gme.drawForceField()
-
+	redsun.SetColor(Color{_noise1D(tickTock)*0.4 + 0.6, 0, 0, 1})
+	gme.Lights.Draw()
 	gme.drawMissiles()
-	gme.drawRocks()
+	gme.drawAndDeleteRocks()
 
 	gme.drawParticles()
 	gme.ship.Draw()
@@ -243,7 +284,10 @@ func (gme *game) drawAndUpdate() {
 	gme.debugQt()
 	rl.EndDrawing()
 
-	gme.sm.doFade() // fade out sounds if needed
+	tickTock++
+}
+
+func (gme *game) GameUpdate() {
 
 	// UPDATING ---------------------------------------------------------------------
 	tnow = time.Now().UnixMicro()
@@ -252,6 +296,8 @@ func (gme *game) drawAndUpdate() {
 	dt := float64(elapsed) / 16666.0
 
 	if !gme.paused {
+
+		gme.sm.Update()
 
 		gme.time[0] += 0.01 // glsl uniform for starfield shader
 
@@ -297,6 +343,6 @@ func (g *game) processMouse() {
 }
 func (g *game) finalize() {
 	rl.CloseWindow()
-	g.sm.unloadAll()
+	g.sm.UnloadAll()
 	g.sprm.unloadAll()
 }

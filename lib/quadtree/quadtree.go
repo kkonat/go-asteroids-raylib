@@ -1,4 +1,4 @@
-package main
+package quadtree
 
 import (
 	"fmt"
@@ -8,16 +8,16 @@ const qtMaxObjects = 10
 const qtMaxLevels = 5
 
 type Rect struct {
-	x, y int32
-	w, h int32
+	X, Y int32
+	W, H int32
 }
 
-type qtObj interface {
+type QtObj interface {
 	comparable
-	bRect() Rect
+	BRect() Rect
 }
 
-type QuadTree[T qtObj] struct {
+type QuadTree[T QtObj] struct {
 	Level   int
 	Objects []T
 	Bounds  Rect
@@ -51,21 +51,21 @@ func (q *QuadTree[T]) Clear() {
 	q.Total = 0
 
 }
-func newNode[T qtObj](pLevel int, pBounds Rect) *QuadTree[T] {
+func NewNode[T QtObj](pLevel int, pBounds Rect) *QuadTree[T] {
 	n := new(QuadTree[T])
 	n.Objects = make([]T, 0, qtMaxObjects)
 	n.Level = pLevel
 	n.Bounds = pBounds
 	return n
 }
-func (q *QuadTree[T]) split() {
-	subW, subH := q.Bounds.w/2, q.Bounds.h/2
-	x, y := q.Bounds.x, q.Bounds.y
+func (q *QuadTree[T]) Split() {
+	subW, subH := q.Bounds.W/2, q.Bounds.H/2
+	x, y := q.Bounds.X, q.Bounds.Y
 
-	q.Nodes[0] = newNode[T](q.Level+1, Rect{x, y, subW, subH})
-	q.Nodes[1] = newNode[T](q.Level+1, Rect{x + subW, y, subW, subH})
-	q.Nodes[2] = newNode[T](q.Level+1, Rect{x, y + subH, subW, subH})
-	q.Nodes[3] = newNode[T](q.Level+1, Rect{x + subW, y + subH, subW, subH})
+	q.Nodes[0] = NewNode[T](q.Level+1, Rect{x, y, subW, subH})
+	q.Nodes[1] = NewNode[T](q.Level+1, Rect{x + subW, y, subW, subH})
+	q.Nodes[2] = NewNode[T](q.Level+1, Rect{x, y + subH, subW, subH})
+	q.Nodes[3] = NewNode[T](q.Level+1, Rect{x + subW, y + subH, subW, subH})
 }
 
 const (
@@ -80,19 +80,19 @@ func (q *QuadTree[T]) getQuadrant(r Rect) int {
 
 	quadrant := qDoesntFit
 
-	cx := q.Bounds.x + (q.Bounds.w / 2)
-	cy := q.Bounds.y + (q.Bounds.h / 2)
+	cx := q.Bounds.X + (q.Bounds.W / 2)
+	cy := q.Bounds.Y + (q.Bounds.H / 2)
 
-	fitsInTop := (r.y+r.h < cy)
-	fitsInBottom := (r.y > cy)
+	fitsInTop := (r.Y+r.H < cy)
+	fitsInBottom := (r.Y > cy)
 	// left quadrants
-	if r.x+r.w < cx {
+	if r.X+r.W < cx {
 		if fitsInTop {
 			quadrant = qTopLeft
 		} else if fitsInBottom {
 			quadrant = qBottomLeft
 		}
-	} else if r.x > cx { // right quadrants
+	} else if r.X > cx { // right quadrants
 		if fitsInTop {
 			quadrant = qTopRight
 		} else if fitsInBottom {
@@ -101,7 +101,7 @@ func (q *QuadTree[T]) getQuadrant(r Rect) int {
 	}
 	return quadrant
 }
-func (q *QuadTree[T]) find(obj T) bool {
+func (q *QuadTree[T]) Find(obj T) bool {
 	found := false
 	if q.Nodes[0] == nil {
 		for _, o := range q.Objects {
@@ -110,10 +110,10 @@ func (q *QuadTree[T]) find(obj T) bool {
 			}
 		}
 	} else {
-		found = found || q.Nodes[0].find(obj)
-		found = found || q.Nodes[1].find(obj)
-		found = found || q.Nodes[2].find(obj)
-		found = found || q.Nodes[3].find(obj)
+		found = found || q.Nodes[0].Find(obj)
+		found = found || q.Nodes[1].Find(obj)
+		found = found || q.Nodes[2].Find(obj)
+		found = found || q.Nodes[3].Find(obj)
 	}
 	return found
 }
@@ -164,7 +164,7 @@ func (q *QuadTree[T]) Insert(obj T) {
 	q.Total++
 
 	if q.Nodes[0] != nil {
-		quadrant := q.getQuadrant(obj.bRect()) // see where it fits
+		quadrant := q.getQuadrant(obj.BRect()) // see where it fits
 		if quadrant != qDoesntFit {
 			q.Nodes[quadrant].Insert(obj)
 			return
@@ -175,12 +175,12 @@ func (q *QuadTree[T]) Insert(obj T) {
 	//	fmt.Printf("+[%p] ", obj)
 	if (len(q.Objects) > qtMaxObjects) && (q.Level < qtMaxLevels) {
 		if q.Nodes[0] == nil {
-			q.split()
+			q.Split()
 		}
 
 		i := 0
 		for i < len(q.Objects) {
-			quadrant := q.getQuadrant(q.Objects[i].bRect())
+			quadrant := q.getQuadrant(q.Objects[i].BRect())
 			if quadrant != qDoesntFit {
 				objs := q.Objects[i]
 				q.Objects = append(q.Objects[:i], q.Objects[i+1:]...)
@@ -193,29 +193,26 @@ func (q *QuadTree[T]) Insert(obj T) {
 	}
 }
 
-func (q *QuadTree[T]) MayCollide(r Rect) []T {
-	const (
-		minDist2 = PrefferredRockSize * PrefferredRockSize * 16
-	)
+func (q *QuadTree[T]) MayCollide(r Rect, miniDist2 int32) []T {
 
 	quadrant := q.getQuadrant(r)
 
 	collidingObjects := make([]T, 0) // := q.Objects
 	//collidingObjects = append(collidingObjects, q.Objects...)
 	for i, o := range q.Objects {
-		dist2 := (o.bRect().x-r.x)*(o.bRect().x-r.x) + (o.bRect().y-r.y)*(o.bRect().y-r.y)
-		if dist2 < minDist2 {
+		dist2 := (o.BRect().X-r.X)*(o.BRect().X-r.X) + (o.BRect().Y-r.Y)*(o.BRect().Y-r.Y)
+		if dist2 < miniDist2 {
 			collidingObjects = append(collidingObjects, q.Objects[i])
 
 		}
 	}
 	if q.Nodes[0] != nil {
 		if quadrant != qDoesntFit {
-			collidingObjects = append(collidingObjects, q.Nodes[quadrant].MayCollide(r)...)
+			collidingObjects = append(collidingObjects, q.Nodes[quadrant].MayCollide(r, miniDist2)...)
 		} else {
 
 			for i := 0; i < 4; i++ {
-				collidingObjects = append(collidingObjects, q.Nodes[i].MayCollide(r)...)
+				collidingObjects = append(collidingObjects, q.Nodes[i].MayCollide(r, miniDist2)...)
 
 			}
 		}
