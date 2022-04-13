@@ -191,7 +191,7 @@ func (r *Rock) split(hitat, speed V2, n int) []*Rock {
 	for i, ir := range newRocks {
 		explodev := ir.pos.Sub(center).Norm()     // force throwing rocks outside
 		rotv := V2{X: -explodev.Y, Y: explodev.X} //perpendicular
-		rotv = rotv.MulA(r.rotSpeed)              // centrifugal force
+		rotv = rotv.MulA(r.rotSpeed * 5)          // centrifugal force
 		explthrust := r.pos.Sub(hitat).Norm()     // thrust from the hit point
 		missilethr := speed.Norm()                // missile speedd contribution
 		masscontrib := math.Sqrt(ir.mass) / 5     // mass impact, larger move less

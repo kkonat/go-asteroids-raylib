@@ -1,9 +1,11 @@
 package main
 
 import (
+	"log"
 	"math/rand"
 	v "rlbb/lib/vector"
 
+	"github.com/fogleman/ease"
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
@@ -148,7 +150,10 @@ type explosion struct {
 	position, speed, offs V2
 	r, rstep              float64
 	maxr, dur, t          float64
+	light                 *OmniLight
 }
+
+const explosionLightStrength = 250
 
 // emits new missile explosion particle
 func newExplosion(pos, speed V2, maxradius, duration float64) *explosion {
@@ -159,6 +164,8 @@ func newExplosion(pos, speed V2, maxradius, duration float64) *explosion {
 	e.maxr, e.dur = maxradius, duration
 	e.rstep = maxradius / (duration * FPS)
 	e.timerMax = int(duration * FPS)
+	e.light = &OmniLight{pos, Color{0.78, 0.78, 0, 1.0}, explosionLightStrength}
+	Game.Lights.AddLight(e.light)
 	return e
 }
 
@@ -167,6 +174,9 @@ func (e *explosion) Animate() {
 		e.timer++
 	}
 	e.position = e.position.Add(e.speed)
+	if e.light != nil {
+		e.light.Pos = e.position
+	}
 	e.offs = e.offs.Add(e.speed)
 	e.r += e.rstep
 }
@@ -176,17 +186,30 @@ func (e *explosion) canDelete() bool {
 }
 
 func (e *explosion) Draw() {
-	t := 1 - e.timer/(e.timerMax/2)
+	defer func() {
+		if err := recover(); err != nil {
+			log.Println("panic occurred:", err)
+		}
+	}()
+	t := 1 - float64(e.timer)/float64(e.timerMax/2)
 	if e.timer < e.timerMax/3 { // phase 1 - flash
 		_gradientdisc(e.position, e.r*e.r*e.r/5, rl.ColorAlpha(rl.Yellow, float32(t)*0.3), rl.Black)
+
 	}
 	if e.timer < e.timerMax/2 { // phase 2 - fireball
 		_disc(e.position, e.r, rl.Yellow)
+		e.light.Strength = ease.OutBounce(float64(1-t)) * explosionLightStrength
 
 	} else { // phase 3 black grow
 		r := e.r*2 - e.r/2
 		t := float32((e.timer - e.timerMax/2)) / float32(e.timerMax/2)
 		_gradientdisc(e.position, e.maxr, rl.ColorAlpha(rl.Yellow, 1-t), rl.ColorAlpha(rl.Orange, 1-t))
-		_disc(e.offs, r, rl.Black)
+		_gradientdisc(e.offs, r, rl.Fade(rl.Black, 1.0), rl.Fade(rl.Black, float32(ease.OutQuint(float64(1.0-t)))))
+		//_disc(e.offs, r, rl.Black)
+		strength := explosionLightStrength * (1 - e.r*e.r/(r*r))
+		e.light.Strength = float64(strength)
+	}
+	if e.timer >= e.timerMax-1  {
+		Game.Lights.DeleteLight(e.light)
 	}
 }

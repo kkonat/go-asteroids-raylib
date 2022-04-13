@@ -9,7 +9,6 @@ import (
 )
 
 const (
-	debugRockcount        = false
 	debugMemstats         = true
 	debugRocksQt          = false
 	debugShipPos          = false
@@ -47,11 +46,6 @@ func (gme *game) debugQt() {
 
 		var line int32 = 16
 		inc := func(l *int32) int32 { *l += 16; return *l }
-
-		if debugRockcount {
-			str := fmt.Sprintf("rocks len = %v", gme.rocks.Len)
-			rl.DrawText(str, 0, inc(&line), 16, rl.White)
-		}
 
 		//printMemoryUsage
 		if debugMemstats {

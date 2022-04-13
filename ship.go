@@ -19,6 +19,7 @@ type ship struct {
 	cycle      uint8
 	forceField bool
 	destroyed  bool
+	light      *OmniLight
 }
 
 const S = 16
@@ -42,6 +43,8 @@ func newShip(posX, posY, mass, fuel float64) *ship {
 	s.mass = mass
 	s.energy = fuel
 
+	s.light = &OmniLight{s.pos, Color{0, 0, 0, 1}, 10}
+
 	return s
 }
 
@@ -59,11 +62,18 @@ func (s *ship) chargeUp() {
 	}
 }
 
+func (s *ship) Move(dt float64) {
+	s.motion.Move(dt)
+	s.light.Pos = s.pos.Sub(s.thr.Norm().MulA(24))
+	s.speed = s.speed.MulA(0.9975)
+	s.rotSpeed *= 0.97
+}
 func (s *ship) Draw() {
 	if !s.destroyed {
 		// draw ship
 		s.shape.Draw(s.pos, s.rot, rl.Black, s.col)
 
+		thr := s.thr.Len()
 		// draw flame
 		disturb := _noise2D(s.cycle * 4).MulA(6).SubA(3)
 		p1 := s.pos.Sub(s.thr.Norm().MulA(16))
@@ -71,11 +81,12 @@ func (s *ship) Draw() {
 
 		n := _noise1D(s.cycle)
 		c := _colorBlendA(n, rl.Yellow, rl.Red)
-		_lineThick(p1, p2, 4.1, c)
 
+		s.light.Col = newColorRGBint(c.R, c.G, c.B)
+		s.light.Strength = thr * 500
+
+		_lineThick(p1, p2, 4.1, c)
 		// animate
-		s.speed = s.speed.MulA(0.9975)
-		s.rotSpeed *= 0.97
 
 		// animate noise
 		s.cycle++

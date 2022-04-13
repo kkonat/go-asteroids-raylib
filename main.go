@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"math/rand"
 	"time"
 
+	gui "github.com/gen2brain/raylib-go/raygui"
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
@@ -20,12 +20,12 @@ func main() {
 	// in newer Go versions.
 	//runtime.GOMAXPROCS(8)
 
-	defer func() {
-		if err := recover(); err != nil {
-			log.Println("panic occurred:", err)
-		}
-	}()
-	rl.SetTraceLog(rl.LogNone)
+	// defer func() {
+	// 	if err := recover(); err != nil {
+	// 		log.Println("panic occurred:", err)
+	// 	}
+	// }()
+	rl.SetTraceLog(rl.LogAll)
 
 	rand.Seed(time.Now().UnixNano())
 	_initNoise()
@@ -35,6 +35,8 @@ func main() {
 		rl.UnloadMusicStream(ms)
 		Game.finalize()
 	}()
+
+	gui.LoadGuiStyle("res/dark.style")
 
 	for !rl.WindowShouldClose() {
 		Game.processKeys()
@@ -46,7 +48,6 @@ func main() {
 }
 
 var fflight *OmniLight
-var fflightIdx int
 
 func (g *game) processKeys() {
 	if rl.IsKeyPressed('Q') {
@@ -84,8 +85,8 @@ func (g *game) processKeys() {
 		Game.sm.Stop(sThrust)
 	}
 	if rl.IsKeyPressed(';') { //forceField
-		fflight = &OmniLight{Game.ship.pos, newColorRGBint(0, 200, 200), 900}
-		fflightIdx = Game.Lights.AddLight(fflight)
+		fflight = &OmniLight{Game.ship.pos, Color{0, 0.78, 0.78, 1.0}, 100}
+		Game.Lights.AddLight(fflight)
 		Game.ship.forceField = true
 		Game.sm.Play(sForceField)
 	}
@@ -96,7 +97,7 @@ func (g *game) processKeys() {
 		}
 	}
 	if rl.IsKeyReleased(';') { // hold thrust
-		Game.Lights.DeleteLight(fflightIdx)
+		Game.Lights.DeleteLight(fflight)
 		Game.ship.forceField = false
 		Game.sm.Stop(sForceField)
 	}
@@ -122,6 +123,9 @@ func (g *game) processKeys() {
 
 	if rl.IsKeyPressed(rl.KeyF1) { /// debug
 		debug = !debug
+	}
+	if rl.IsKeyPressed(rl.KeyF2) { /// debug
+		showgui = !showgui
 	}
 	if rl.IsKeyPressed('R') { // reset shields
 		Game.sm.Play(sOinx)

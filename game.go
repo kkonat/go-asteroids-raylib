@@ -2,13 +2,14 @@ package main
 
 import (
 	"container/list"
+	"fmt"
 	"image/color"
 	"sync"
 	"time"
 
+	gui "github.com/gen2brain/raylib-go/raygui"
 	rl "github.com/gen2brain/raylib-go/raylib"
 
-	// "github.com/golang-ui/nuklear/nk"	// interface, maybe
 	qt "rlbb/lib/quadtree"
 	sm "rlbb/lib/soundmanager"
 
@@ -54,6 +55,7 @@ type game struct {
 
 var vectorFont rl.Font
 var debug bool
+var showgui bool
 
 // global time counters
 var tnow, tprev, mAmmoLastPlayed, mShieldsLastPlayed int64
@@ -124,6 +126,7 @@ func newGame(w, h int32) *game {
 
 	g.ship = newShip(float64(w/2), float64(h/2), 1000, 1000)
 	g.ship.rot = 45 - 180
+	g.Lights.AddLight(g.ship.light)
 	g.generateRocks(noPreferredRocks)
 
 	tprev = time.Now().Local().UnixMicro()
@@ -206,6 +209,30 @@ func (g *game) drawStatusBar() {
 	}
 }
 
+var checked = true
+var value = float32(0.5)
+
+func (g *game) drawGUI() {
+	if showgui {
+		x := g.gW - 140
+		y := float32(20)
+
+		clicked := gui.Button(rl.Rectangle{float32(x), y, 140, 20}, "Clicken mich")
+		str := fmt.Sprintf("das buton war cliked : %v", clicked)
+		y += 21
+		gui.Label(rl.Rectangle{float32(x), y, 140, 20}, str)
+		y += 21
+		checked = gui.CheckBox(rl.Rectangle{float32(x) + 100, y, 20, 20}, checked)
+		str = fmt.Sprintf("checked:%v", checked)
+		gui.Label(rl.Rectangle{float32(x), y, 100, 20}, str)
+		y += 21
+		value = gui.Slider(rl.Rectangle{float32(x), y, 140, 20}, value, 0.0, 1.0)
+		y += 21
+		str = fmt.Sprintf("value:%v", value)
+		gui.Label(rl.Rectangle{float32(x), y, 100, 20}, str)
+	}
+}
+
 func (gme *game) addParticle(p particle) {
 	if len(gme.particles) < maxParticles {
 		gme.particles = append(gme.particles, p)
@@ -282,6 +309,7 @@ func (gme *game) GameDraw() {
 	gme.ship.Draw()
 	gme.drawStatusBar()
 	gme.debugQt()
+	gme.drawGUI()
 	rl.EndDrawing()
 
 	tickTock++

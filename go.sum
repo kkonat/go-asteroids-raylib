@@ -1,3 +1,8 @@
+github.com/fogleman/ease v0.0.0-20170301025033-8da417bf1776 h1:VRIbnDWRmAh5yBdz+J6yFMF5vso1It6vn+WmM/5l7MA=
+github.com/fogleman/ease v0.0.0-20170301025033-8da417bf1776/go.mod h1:9wvnDu3YOfxzWM9Cst40msBF1C2UdQgDv962oTxSuMs=
+github.com/gen2brain/raylib-go/raygui v0.0.0-20220324192015-efabb001d2f1 h1:+aHa+FGTaZVMfut/BAv8sIybkIO19fjFDJvLMQ43JNI=
+github.com/gen2brain/raylib-go/raygui v0.0.0-20220324192015-efabb001d2f1/go.mod h1:PdIDpFApFZazMjaf1mVuSgzTrMIdyC1e4vL98Euzgkw=
+github.com/gen2brain/raylib-go/raylib v0.0.0-20211111173445-914ca1ffdc4d/go.mod h1:+NbsqGlEQqGqrsgJFF5Yj2dkvn0ML2SQb8RqM2hJsPU=
 github.com/gen2brain/raylib-go/raylib v0.0.0-20220116181443-e4777d30ee99 h1:oIi/mobSw0P7bujBj8og1cAvHJw2vBbjcA8gJfUgfyA=
 github.com/gen2brain/raylib-go/raylib v0.0.0-20220116181443-e4777d30ee99/go.mod h1:+NbsqGlEQqGqrsgJFF5Yj2dkvn0ML2SQb8RqM2hJsPU=
 github.com/ojrac/opensimplex-go v1.0.2 h1:l4vs0D+JCakcu5OV0kJ99oEaWJfggSc9jiLpxaWvSzs=

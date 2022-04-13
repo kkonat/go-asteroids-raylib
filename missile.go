@@ -1,9 +1,11 @@
 package main
 
 import (
+	"image/color"
 	"math"
 	"math/rand"
 	v "rlbb/lib/vector"
+	"unsafe"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
@@ -50,8 +52,19 @@ type normalMissile struct {
 	aMissile
 }
 
-func (m *normalMissile) getData() *aMissile       { return &m.aMissile }
-func (m *normalMissile) Draw()                    { m.shape.Draw(m.motion.pos, m.motion.rot, rl.Black, rl.DarkGray) }
+func (m *normalMissile) getData() *aMissile { return &m.aMissile }
+func (m *normalMissile) Draw() {
+
+	m.shape.Draw(m.motion.pos, m.motion.rot, rl.Black, rl.DarkGray)
+
+	idx := uint8(int(tickTock) + *((*int)(unsafe.Pointer(m))))
+	disturb := _noise2D(idx * 4).MulA(6).SubA(3)
+	p1 := m.motion.pos
+	p2 := p1.Sub(m.motion.speed.MulA(3)).Add(disturb)
+	bl := _noise1D(uint8(idx))
+	c := _colorBlendA(bl, color.RGBA{30, 10, 0, 255}, color.RGBA{190, 100, 0, 255})
+	_lineThick(p1, p2, 3.1, c)
+}
 func (m *normalMissile) Move(_ *game, dt float64) { m.aMissile.Move(dt) }
 
 type guidedMissile struct {
@@ -64,9 +77,17 @@ type guidedMissile struct {
 func (m *guidedMissile) getData() *aMissile { return &m.aMissile }
 func (m *guidedMissile) Draw() {
 	if m.targetRock != nil {
-		_lineThick(m.pos.Add(m.speed.MulA(6)), m.targetRock.pos, 10, rl.Color{0, 100, 100, 90})
+		_lineThick(m.pos.Add(m.speed.MulA(6)), m.targetRock.pos, 10, rl.Color{0, 100, 100, 30})
 	}
 	m.shape.Draw(m.motion.pos, m.motion.rot, rl.Black, rl.Gray)
+
+	idx := uint8(m.life + *((*int)(unsafe.Pointer(m))))
+	disturb := _noise2D(idx * 4).MulA(6).SubA(3)
+	p1 := m.motion.pos
+	p2 := p1.Sub(m.motion.speed.MulA(3)).Add(disturb)
+	bl := _noise1D(uint8(idx))
+	c := _colorBlendA(bl, color.RGBA{100, 50, 0, 255}, color.RGBA{190, 190, 0, 255})
+	_lineThick(p1, p2, 3.1, c)
 }
 func (m *guidedMissile) Move(g *game, dt float64) {
 

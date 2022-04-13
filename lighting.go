@@ -1,8 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"math"
 
+	"github.com/fogleman/ease"
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
@@ -27,9 +29,28 @@ func (c1 Color) Lerp(t float64, c2 Color) Color {
 	return c1.MulA(1 - t).Add(c2.MulA(t))
 }
 
+// QuadOut easing
+// t: current time, b: begInnIng value, c: change In value, d: duration
+func easeOut(t float64) float64 {
+	return ease.OutQuart(t)
+}
+
+func (c1 Color) clamp() Color {
+	if c1.R > 1.0 {
+		c1.R = easeOut(c1.R)
+	}
+	if c1.G > 1.0 {
+		c1.G = easeOut(c1.R)
+	}
+	if c1.B > 1.0 {
+		c1.B = easeOut(c1.R)
+	}
+	return c1
+}
+
 func newColorRGB(r, g, b float64) Color { return Color{r, g, b, 1.0} }
 func newColorRGBint(r, g, b uint8) Color {
-	return Color{float64(r / 255), float64(g / 255), float64(b / 255), 1.0}
+	return Color{float64(r) / 255, float64(g) / 255, float64(b) / 255, 1.0}
 }
 func nreColorBlack() Color { return Color{0, 0, 0, 1} }
 func ColorToRlColor(c Color) rl.Color {
@@ -46,13 +67,13 @@ type LightSource interface {
 }
 
 type Lighting struct {
-	lights []LightSource
+	sources []LightSource
 }
 
 type OmniLight struct {
 	Pos      V2
 	Col      Color
-	Sterngth float64
+	Strength float64
 }
 type SpotLight struct {
 	OmniLight
@@ -63,45 +84,54 @@ type SpotLight struct {
 
 func newLighting() *Lighting {
 	l := new(Lighting)
+	l.sources = make([]LightSource, 0, 20)
 	return l
 }
 
-func (l *Lighting) AddLight(light LightSource) int {
-	l.lights = append(l.lights, light)
-	return len(l.lights) - 1
+func (l *Lighting) AddLight(light LightSource) (lightIdx int) {
+	l.sources = append(l.sources, light)
+	lightIdx = len(l.sources) - 1
+	return
 }
-func (l *Lighting) DeleteLight(i int) {
-	l.lights = append(l.lights[:i], l.lights[i+1:]...)
+
+func (l *Lighting) DeleteLight(light LightSource) {
+	for li := range l.sources {
+		if l.sources[li] == light {
+			l.sources = append(l.sources[:li], l.sources[li+1:]...)
+			return
+		}
+	}
+	fmt.Println("can't delete PANIC: ")
 }
 
 func (l Lighting) ComputeColor(p1, p2, n1, n2 V2, ownCol Color) Color {
 	var col Color
-	var i int
+	//	var i int
 
 	n := n1.Add(n2).MulA(0.5)
 	p := p1.Add(p2).MulA(0.5)
-	for _, l := range l.lights {
+	for _, l := range l.sources {
 		area := ((p2.X-p1.X)*(l.GetPos().Y-p1.Y) - (l.GetPos().X-p1.X)*(p2.Y-p1.Y)) // check if line segment is cw or ccw relative to light source
 		if area < 0 {
 			col.Incr(l.ComputeColor(p, n, ownCol))
-			i = i + 1
+			//i = i + 1
 		}
 	}
-
-	if i > 0 {
-		return col.DivA(float64(i))
-	} else {
-		return newColorRGB(0, 0, 0) // invisible
-	}
+	return col.clamp()
+	// if i > 0 {
+	// 	return col.DivA(float64(i))
+	// } else {
+	// 	return newColorRGB(0, 0, 0) // invisible
+	// }
 
 }
 func (l *Lighting) Draw() {
-	for _, l := range l.lights {
+	for _, l := range l.sources {
 		l.Draw()
 	}
 }
 func (ol *OmniLight) SetColor(col Color) { ol.Col = col }
-func (ol OmniLight) GetPos() V2         { return ol.Pos }
+func (ol OmniLight) GetPos() V2          { return ol.Pos }
 func (ol OmniLight) ComputeColor(at, normal V2, col Color) Color {
 	col = col.Mul(ol.Col)
 	v := ol.Pos.Sub(at)
@@ -110,7 +140,7 @@ func (ol OmniLight) ComputeColor(at, normal V2, col Color) Color {
 
 	diffuse := normal.NormDot(l)
 	diffuse = math.Abs(diffuse)
-	diffuse *= 500 * ol.Sterngth / (dist*dist + 0.001)
+	diffuse *= 500 * ol.Strength / (dist*dist + 0.001)
 
 	if diffuse > 1 {
 		diffuse = 1
@@ -120,7 +150,7 @@ func (ol OmniLight) ComputeColor(at, normal V2, col Color) Color {
 	return c
 }
 func (ol OmniLight) Draw() {
-	rl.DrawCircleGradient(int32(ol.Pos.X), int32(ol.Pos.Y), float32(ol.Sterngth), ColorToRlColorFade(ol.Col, 0.2), rl.NewColor(0, 0, 0, 0))
+	rl.DrawCircleGradient(int32(ol.Pos.X), int32(ol.Pos.Y), float32(ol.Strength), ColorToRlColorFade(ol.Col, 0.4), rl.NewColor(0, 0, 0, 0))
 }
 func (ol *SpotLight) ComputeColor(at, normal V2, col rl.Color) rl.Color {
 	return rl.Black

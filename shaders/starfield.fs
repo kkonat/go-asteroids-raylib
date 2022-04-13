@@ -47,15 +47,14 @@ vec3 StarLayer(vec2 uv) {
     vec2 gv = fract(uv)-.5;
     vec2 id = floor(uv);
 
-//    if( gv.x>.48 || gv.y >.48) col.r=1.;
     for(int y=-1;y<=1;y++) {
             for(int x=-1;x<=1;x++) {
                 vec2 offs = vec2(x,y);
                 float n = Hash21(id+offs);
                 float size = fract(n*345.32);
                 
-                float star = Star( gv-offs-vec2(n-0.5,fract(n*34.)-.5), 15.*smoothstep(.85,1.,size));
-                vec3 color = sin(vec3(.6,.9,.9)*fract(n*2345.2)*6.238)*.5+.5;
+                float star = Star( gv-offs-vec2(n-0.5,fract(n*34.)-.5), 0.5*smoothstep(.85,1.,size));
+                vec3 color = sin(vec3(.6,.9,.9)*fract(n*2345.2)*6.238)*.5+.1;
                 color = color*size*vec3(0.2,0.2,0.23);
                 col += star*size*color;
             }
@@ -78,5 +77,5 @@ void main()
         col += StarLayer(uv-vec2(offs+i*454.3,0.))*fade;
     }
   
-    finalColor = vec4(col,1.0)*0.7;
+    finalColor = vec4(col,1.0)*0.6;
 }
