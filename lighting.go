@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"math"
 
 	"github.com/fogleman/ease"
@@ -34,7 +33,12 @@ func (c1 Color) Lerp(t float64, c2 Color) Color {
 func easeOut(t float64) float64 {
 	return ease.OutQuart(t)
 }
-
+func (c1 Color) gamma(gamma float64) Color {
+	c1.R = math.Pow(c1.R, 1/gamma)
+	c1.G = math.Pow(c1.G, 1/gamma)
+	c1.B = math.Pow(c1.B, 1/gamma)
+	return c1
+}
 func (c1 Color) clamp() Color {
 	if c1.R > 1.0 {
 		c1.R = easeOut(c1.R)
@@ -84,7 +88,7 @@ type SpotLight struct {
 
 func newLighting() *Lighting {
 	l := new(Lighting)
-	l.sources = make([]LightSource, 0, 20)
+	l.sources = make([]LightSource, 0, 120)
 	return l
 }
 
@@ -101,7 +105,7 @@ func (l *Lighting) DeleteLight(light LightSource) {
 			return
 		}
 	}
-	fmt.Println("can't delete PANIC: ")
+	panic("can't delete PANIC: ")
 }
 
 func (l Lighting) ComputeColor(p1, p2, n1, n2 V2, ownCol Color) Color {
@@ -111,20 +115,16 @@ func (l Lighting) ComputeColor(p1, p2, n1, n2 V2, ownCol Color) Color {
 	n := n1.Add(n2).MulA(0.5)
 	p := p1.Add(p2).MulA(0.5)
 	for _, l := range l.sources {
-		area := ((p2.X-p1.X)*(l.GetPos().Y-p1.Y) - (l.GetPos().X-p1.X)*(p2.Y-p1.Y)) // check if line segment is cw or ccw relative to light source
+		// check if line segment is cw or ccw relative to light source, by calculating a signed area
+		area := ((p2.X-p1.X)*(l.GetPos().Y-p1.Y) - (l.GetPos().X-p1.X)*(p2.Y-p1.Y))
 		if area < 0 {
 			col.Incr(l.ComputeColor(p, n, ownCol))
-			//i = i + 1
 		}
 	}
-	return col.clamp()
-	// if i > 0 {
-	// 	return col.DivA(float64(i))
-	// } else {
-	// 	return newColorRGB(0, 0, 0) // invisible
-	// }
 
+	return col.clamp()
 }
+
 func (l *Lighting) Draw() {
 	for _, l := range l.sources {
 		l.Draw()
@@ -140,7 +140,7 @@ func (ol OmniLight) ComputeColor(at, normal V2, col Color) Color {
 
 	diffuse := normal.NormDot(l)
 	diffuse = math.Abs(diffuse)
-	diffuse *= 500 * ol.Strength / (dist*dist + 0.001)
+	diffuse *= 200 * ol.Strength / (dist*dist + 0.001)
 
 	if diffuse > 1 {
 		diffuse = 1

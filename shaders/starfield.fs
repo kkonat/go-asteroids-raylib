@@ -77,5 +77,5 @@ void main()
         col += StarLayer(uv-vec2(offs+i*454.3,0.))*fade;
     }
   
-    finalColor = vec4(col,1.0)*0.6;
+    finalColor = vec4(col,0.8)*0.6;
 }

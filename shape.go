@@ -45,7 +45,7 @@ func (s *shape) Draw(pos V2, rot float64, colFill, colLine rl.Color) {
 			n1 := p1.Sub(pos).Norm()
 			n2 := p2.Sub(pos).Norm()
 
-			color := Game.Lights.ComputeColor(p1, p2, n1, n2, _ColorfromRlColor(colLine))
+			color := Game.VisibleLights.ComputeColor(p1, p2, n1, n2, _ColorfromRlColor(colLine))
 
 			_line(p1, p2, _rlColorFromColor(color))
 
@@ -83,7 +83,7 @@ func (s *shape) DrawThin(pos V2, rot float64, colFill, colLine rl.Color, thickne
 			n1 := p1.Sub(pos).Norm()
 			n2 := p2.Sub(pos).Norm()
 
-			color := Game.Lights.ComputeColor(p1, p2, n1, n2, _ColorfromRlColor(colLine))
+			color := Game.VisibleLights.ComputeColor(p1, p2, n1, n2, _ColorfromRlColor(colLine))
 
 			// _line(p1, p1.Add(n1.MulA(5)), rl.White) // Debug draw nrormals
 			// _line(p2, p2.Add(n2.MulA(5)), rl.White)

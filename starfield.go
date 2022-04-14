@@ -15,12 +15,10 @@ type starfield struct {
 	w, h        int32
 	starfTex    rl.Texture2D
 	shader      rl.Shader
-	time        []float32
-	iResolution []float32
+	time        []float32	// shader uniforms
+	iResolution []float32	// shader uniforms
 	timeLoc     int32
 }
-
-const starsNo = 1000
 
 func newStarfield(w, h int32, time []float32) *starfield {
 	sf := new(starfield)

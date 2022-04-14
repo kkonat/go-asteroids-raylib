@@ -203,12 +203,16 @@ func (g *game) processShipHits() {
 			if dist2 < squared(r.radius+c.r) {
 				// _disc(c.p, c.r, rl.Red)
 				if g.ship.shields > 0.7 {
-					g.ship.shields -= 0.7
+					if !debug {
+						g.ship.shields -= 0.7
+					}
 					g.sm.PlayFor(sScratch, 80)
 				} else {
 					if !debug {
-						g.addParticle(newSparks(g.ship.pos, g.ship.speed, 300, 260, 5, rl.White, rl.Red))
+						g.addParticle(newSparks(g.ship.pos, g.ship.speed, 200, 260, 5, rl.White, rl.Red))
+						malFunXT = false
 						if !g.ship.destroyed {
+
 							g.sm.Play(sExplodeShip)
 						}
 						g.ship.destroyed = true
@@ -259,12 +263,6 @@ func (g *game) processMissileHits() {
 
 		potCols := g.RocksQt.MayCollide(missileBRect, minidist2)
 
-		// TODO delete
-		// no, p := g.checkIfOntheList(potCols)
-		// if no > 0 {
-		// 	fmt.Printf("potcols has %d elements not from the list [%p]\nList:", no, p)
-		// }
-
 		if debug {
 			if degubDrawMissileLines {
 				for _, c := range potCols {
@@ -287,7 +285,9 @@ func (g *game) processMissileHits() {
 				g.ship.cash += score
 				str := fmt.Sprintf("+%d", score)
 				g.addParticle(newTextPart(missile.getData().pos, missile.getData().speed, str, 16, 2, 0, false, rl.Yellow, rl.Red))
-				g.addParticle(newExplosion(missile.getData().pos, missile.getData().speed, 30, 0.5))
+				if expl := newExplosion(missile.getData().pos, missile.getData().speed, 30, 0.5); g.addParticle(expl) {
+					Game.VisibleLights.AddLight(expl.light) // only add light
+				}
 				g.addParticle(newSparks(missile.getData().pos, missile.getData().speed, 100, 100, 2.0, rl.Orange, rl.Red))
 
 				// sound
@@ -317,16 +317,4 @@ func (g *game) processMissileHits() {
 			mi++
 		}
 	}
-}
-func (g *game) RocksListPrint(p any) {
-	fmt.Printf("RX[%d]: ", g.rocks.Len())
-	for re := g.rocks.Front(); re != nil; re = re.Next() {
-		if re.Value == p {
-			fmt.Printf("|%p|, ", re.Value)
-		} else {
-			fmt.Printf("%p ", re.Value)
-		}
-
-	}
-	fmt.Println()
 }

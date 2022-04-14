@@ -4,7 +4,7 @@ import (
 	"container/list"
 	"fmt"
 	"image/color"
-	"sync"
+	"math"
 	"time"
 
 	gui "github.com/gen2brain/raylib-go/raygui"
@@ -23,7 +23,7 @@ const (
 	PrefferredRockSize = 80
 	maxRocks           = 100
 	maxMissiles        = 50
-	maxParticles       = 50
+	maxParticles       = 150
 	FPS                = 60
 	shieldsLowLimit    = 25
 	forceFieldRadius   = 200
@@ -34,10 +34,11 @@ const (
 )
 
 type game struct {
-	sm        *sm.SoundManager
-	sprm      *spriteManager
-	sf        *starfield
-	time      []float32 // gsls uniform [1]float32
+	sm   *sm.SoundManager
+	sprm *spriteManager
+	sf   *starfield
+	time []float32 // gsls uniform [1]float32
+
 	ship      *ship
 	rocks     list.List
 	missiles  []missile
@@ -46,11 +47,13 @@ type game struct {
 
 	sW, sH        int32
 	gW, gH        float64
-	Lights        *Lighting
+	VisibleLights *Lighting
 	paused        bool
 	cursorEnabled bool
 	curWeapon     int
 	weapons       map[int]weapon
+
+	pp *PostProcess
 }
 
 var vectorFont rl.Font
@@ -79,6 +82,56 @@ const (
 
 var redsun *OmniLight
 
+type PostProcess struct {
+	shader      rl.Shader
+	gamma       []float32
+	iTime       []float32
+	target      rl.RenderTexture2D
+	iResolution []float32
+	malfunct    []float32
+}
+
+func newPostprocess(w, h int32) *PostProcess {
+	pp := &PostProcess{}
+	pp.gamma = make([]float32, 1)
+	pp.iTime = make([]float32, 1)
+	pp.malfunct = make([]float32, 1)
+	pp.iResolution = make([]float32, 2)
+
+	pp.shader = rl.LoadShader("shaders/base.vs", "shaders/postprocess.fs")
+
+	pp.iResolution[0], pp.iResolution[1] = float32(w), float32(h)
+	rl.SetShaderValue(pp.shader, rl.GetShaderLocation(pp.shader, "iResolution"), pp.iResolution, rl.ShaderUniformVec2)
+
+	pp.target = rl.LoadRenderTexture(w, h)
+
+	// rl.BeginDrawing() // clear ClearBackground version
+
+	// rl.BeginTextureMode(pp.target)
+	// rl.ClearBackground(rl.Black)
+	// rl.EndTextureMode()
+
+	// rl.EndDrawing()
+	return pp
+}
+func (pp *PostProcess) SetShaderValues() {
+	pp.gamma[0] = float32(gammaValue)
+	pp.iTime[0] = pp.iTime[0] + 1
+	if malFunXT {
+		pp.malfunct[0] = 1
+	} else {
+		pp.malfunct[0] = 0
+	}
+
+	rl.SetShaderValue(pp.shader, rl.GetShaderLocation(pp.shader, "gamma"), pp.gamma, rl.ShaderUniformFloat)
+	rl.SetShaderValue(pp.shader, rl.GetShaderLocation(pp.shader, "iTime"), pp.iTime, rl.ShaderUniformFloat)
+	rl.SetShaderValue(pp.shader, rl.GetShaderLocation(pp.shader, "glitch"), pp.malfunct, rl.ShaderUniformInt)
+}
+func (pp *PostProcess) Finalize() {
+	rl.UnloadShader(pp.shader)
+	rl.UnloadRenderTexture(pp.target)
+}
+
 func newGame(w, h int32) *game {
 
 	g := new(game)
@@ -103,13 +156,15 @@ func newGame(w, h int32) *game {
 
 	g.sm.EnableLoops(sSpace, sScore)
 	g.SetScreenSize(w, h)
-	g.Lights = &Lighting{}
-	g.Lights.AddLight(OmniLight{V2{1440, 400}, _ColorfromRlColor(rl.Purple), 900})
+	g.VisibleLights = &Lighting{}
+	g.VisibleLights.AddLight(OmniLight{V2{1440, 400}, _ColorfromRlColor(rl.Purple), 900})
 
 	redsun = &OmniLight{V2{-100, 100}, _ColorfromRlColor(rl.Red), 300}
-	g.Lights.AddLight(redsun)
+	g.VisibleLights.AddLight(redsun)
 	rl.SetConfigFlags(rl.FlagMsaa4xHint | rl.FlagVsyncHint | rl.FlagWindowMaximized)
 	rl.InitWindow(w, h, caption)
+
+	g.pp = newPostprocess(w, h)
 
 	rl.SetTargetFPS(FPS)
 
@@ -119,14 +174,14 @@ func newGame(w, h int32) *game {
 	g.paused = false
 
 	g.time = make([]float32, 1)
-	g.sf = newStarfield(g.sW, g.sH, g.time)
+	g.sf = newStarfield(w, h, g.time)
 	debug = startWithDebugOn
 
 	g.sprm = newSpriteManager()
 
 	g.ship = newShip(float64(w/2), float64(h/2), 1000, 1000)
 	g.ship.rot = 45 - 180
-	g.Lights.AddLight(g.ship.light)
+	g.VisibleLights.AddLight(g.ship.light)
 	g.generateRocks(noPreferredRocks)
 
 	tprev = time.Now().Local().UnixMicro()
@@ -209,8 +264,8 @@ func (g *game) drawStatusBar() {
 	}
 }
 
-var checked = true
-var value = float32(0.5)
+var malFunXT = false
+var gammaValue = float64(1.0)
 
 func (g *game) drawGUI() {
 	if showgui {
@@ -222,20 +277,27 @@ func (g *game) drawGUI() {
 		y += 21
 		gui.Label(rl.Rectangle{float32(x), y, 140, 20}, str)
 		y += 21
-		checked = gui.CheckBox(rl.Rectangle{float32(x) + 100, y, 20, 20}, checked)
-		str = fmt.Sprintf("checked:%v", checked)
+		malFunXT = gui.CheckBox(rl.Rectangle{float32(x) + 100, y, 20, 20}, malFunXT)
+
+		gui.Label(rl.Rectangle{float32(x), y, 100, 20}, "Malfunxon")
+		y += 21
+		gammaValue = float64(gui.Slider(rl.Rectangle{float32(x), y, 140, 20}, float32(gammaValue), 0.0, 3.0))
+		y += 21
+		str = fmt.Sprintf("gamma:%v", gammaValue)
 		gui.Label(rl.Rectangle{float32(x), y, 100, 20}, str)
 		y += 21
-		value = gui.Slider(rl.Rectangle{float32(x), y, 140, 20}, value, 0.0, 1.0)
+		gui.Label(rl.Rectangle{float32(x), y, 100, 20}, "Shields")
 		y += 21
-		str = fmt.Sprintf("value:%v", value)
-		gui.Label(rl.Rectangle{float32(x), y, 100, 20}, str)
+		g.ship.shields = float64(gui.Slider(rl.Rectangle{float32(x), y, 140, 20}, float32(g.ship.shields), 0.0, 100.0))
 	}
 }
 
-func (gme *game) addParticle(p particle) {
+func (gme *game) addParticle(p particle) bool {
 	if len(gme.particles) < maxParticles {
 		gme.particles = append(gme.particles, p)
+		return true
+	} else {
+		return false
 	}
 }
 func (gme *game) animateParticles() {
@@ -292,23 +354,35 @@ func (gme *game) buildRocksQTree() {
 	}
 }
 
-var wg sync.WaitGroup
+const starsNo = 1000
 
 func (gme *game) GameDraw() {
 	rl.BeginDrawing()
 
-	rl.ClearBackground(rl.Black)
+	rl.BeginTextureMode(gme.pp.target)
+
 	gme.sf.draw() // draw starfield
 	gme.drawForceField()
 	redsun.SetColor(Color{_noise1D(tickTock)*0.4 + 0.6, 0, 0, 1})
-	gme.Lights.Draw()
+	gme.VisibleLights.Draw()
 	gme.drawMissiles()
 	gme.drawAndDeleteRocks()
 
 	gme.drawParticles()
 	gme.ship.Draw()
-	gme.drawStatusBar()
+
 	gme.debugQt()
+
+	rl.EndTextureMode()
+
+	rl.BeginShaderMode(gme.pp.shader)
+	gme.pp.SetShaderValues()
+	rl.DrawTextureRec(gme.pp.target.Texture,
+		rl.NewRectangle(0, 0, float32(gme.pp.target.Texture.Width), float32(-gme.pp.target.Texture.Height)),
+		rl.NewVector2(0, 0), rl.White)
+	rl.EndShaderMode()
+
+	gme.drawStatusBar()
 	gme.drawGUI()
 	rl.EndDrawing()
 
@@ -323,6 +397,18 @@ func (gme *game) GameUpdate() {
 	tprev = tnow
 	dt := float64(elapsed) / 16666.0
 
+	gammaValue = 0.9 + math.Sin(float64(gme.time[0]/30))*0.3
+	if gme.ship.shields < 80 {
+		pwm := 1 - gme.ship.shields/80
+		scale := gme.ship.shields / 8
+		if rnd() < pwm/scale {
+			malFunXT = true
+		} else {
+			malFunXT = false
+		}
+	} else {
+		malFunXT = false
+	}
 	if !gme.paused {
 
 		gme.sm.Update()
@@ -373,4 +459,5 @@ func (g *game) finalize() {
 	rl.CloseWindow()
 	g.sm.UnloadAll()
 	g.sprm.unloadAll()
+	g.pp.Finalize()
 }

@@ -165,7 +165,7 @@ func newExplosion(pos, speed V2, maxradius, duration float64) *explosion {
 	e.rstep = maxradius / (duration * FPS)
 	e.timerMax = int(duration * FPS)
 	e.light = &OmniLight{pos, Color{0.78, 0.78, 0, 1.0}, explosionLightStrength}
-	Game.Lights.AddLight(e.light)
+
 	return e
 }
 
@@ -209,7 +209,7 @@ func (e *explosion) Draw() {
 		strength := explosionLightStrength * (1 - e.r*e.r/(r*r))
 		e.light.Strength = float64(strength)
 	}
-	if e.timer >= e.timerMax-1  {
-		Game.Lights.DeleteLight(e.light)
+	if e.timer >= e.timerMax-1 { // deletion - this may never occurr - see TODO above
+		Game.VisibleLights.DeleteLight(e.light)
 	}
 }

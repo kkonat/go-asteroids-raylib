@@ -25,7 +25,7 @@ func main() {
 	// 		log.Println("panic occurred:", err)
 	// 	}
 	// }()
-	rl.SetTraceLog(rl.LogAll)
+	rl.SetTraceLog(rl.LogNone)
 
 	rand.Seed(time.Now().UnixNano())
 	_initNoise()
@@ -86,7 +86,7 @@ func (g *game) processKeys() {
 	}
 	if rl.IsKeyPressed(';') { //forceField
 		fflight = &OmniLight{Game.ship.pos, Color{0, 0.78, 0.78, 1.0}, 100}
-		Game.Lights.AddLight(fflight)
+		Game.VisibleLights.AddLight(fflight)
 		Game.ship.forceField = true
 		Game.sm.Play(sForceField)
 	}
@@ -97,7 +97,7 @@ func (g *game) processKeys() {
 		}
 	}
 	if rl.IsKeyReleased(';') { // hold thrust
-		Game.Lights.DeleteLight(fflight)
+		Game.VisibleLights.DeleteLight(fflight)
 		Game.ship.forceField = false
 		Game.sm.Stop(sForceField)
 	}
