@@ -65,8 +65,8 @@ func _triangle(p1, p2, p3 V2, col rl.Color) {
 func _rect(p1 V2, d int32, col rl.Color) {
 	rl.DrawRectangle(int32(p1.X), int32(p1.Y), d, d, col)
 }
-func _rectFxdV2(p1 vector.FxdV2, d int32, col rl.Color) {
-	rl.DrawRectangle(p1.XInt32(), p1.YInt32(), d, d, col)
+func _rectFxdV2(p1 vector.FxdFPV2, d int32, col rl.Color) {
+	rl.DrawRectangle(p1.X.ToInt32(), p1.Y.ToInt32(), d, d, col)
 }
 
 // writes text with multiple Colors
@@ -101,6 +101,21 @@ func _multicolorText(x, y int32, size int32, args ...interface{}) int32 {
 	}
 	return int32(width)
 }
+
+func _flashColor[T constraints.Ordered](tickTock uint8, col rl.Color, warn, low, val T) rl.Color {
+	if val < low {
+		if tickTock%20 > 10 {
+			return rl.Red
+		} else {
+			return color.RGBA{127, 0, 0, 255}
+		}
+	} else if val < warn {
+		return rl.Beige
+	} else {
+		return col
+	}
+}
+
 func lerp(t float32, a, b uint8) uint8 {
 	return uint8(float32(a)*(1.0-t) + float32(b)*t)
 }
@@ -150,6 +165,21 @@ func min[T constraints.Ordered](a, b T) T {
 		return a
 	} else {
 		return b
+	}
+}
+func min3[T constraints.Ordered](a, b, c T) T {
+	if a < b {
+		if c < a {
+			return c
+		} else {
+			return a
+		}
+	} else {
+		if c < b {
+			return c
+		} else {
+			return b
+		}
 	}
 }
 func max[T constraints.Ordered](a, b T) T {

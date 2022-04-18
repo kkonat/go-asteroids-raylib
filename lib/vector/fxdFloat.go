@@ -1,29 +1,42 @@
 package vector
 
-type fxdFloat int32
+// simple fixed floating point math
 
-const fxdFloatShift = 8
+type fxdFP int32 // basic data type
 
-func FloatToFxdInt(a float64) fxdFloat {
-	return fxdFloat(float64(1<<fxdFloatShift) * a)
+const fxdFloatShift = 8 // numver of fractional bits
+
+// converts float64 to fixed floating point
+func FloatToFxdFP(a float64) fxdFP {
+	return fxdFP(float64(1<<fxdFloatShift) * a)
 }
 
-type FxdV2 struct {
-	X, Y fxdFloat
+// fixed floating point 2D vector
+type FxdFPV2 struct {
+	X, Y fxdFP
 }
 
-func (vect V2) ToV2int() FxdV2 {
-	return FxdV2{FloatToFxdInt(vect.X), FloatToFxdInt(vect.Y)}
+// V2 to Fixed Floating point 2D vector conversion
+func (vect V2) ToFxdFPV2() FxdFPV2 {
+	return FxdFPV2{FloatToFxdFP(vect.X), FloatToFxdFP(vect.Y)}
 }
-func (v FxdV2) MulA(a int32) FxdV2 {
-	return FxdV2{(v.X * fxdFloat(a)) >> fxdFloatShift, (v.Y * fxdFloat(a)) >> fxdFloatShift}
+
+// scalar mulatiplication
+func (v FxdFPV2) MulA(a int32) FxdFPV2 {
+	return FxdFPV2{(v.X * fxdFP(a)) >> fxdFloatShift, (v.Y * fxdFP(a)) >> fxdFloatShift}
 }
-func (v1 FxdV2) Add(v2 FxdV2) FxdV2 {
-	return FxdV2{v1.X + v2.X, v1.Y + v2.Y}
+
+// scalar division
+func (v FxdFPV2) DivA(a int32) FxdFPV2 {
+	return FxdFPV2{(v.X / fxdFP(a)) >> fxdFloatShift, (v.Y / fxdFP(a)) >> fxdFloatShift}
 }
-func (p1 FxdV2) XInt32() int32 {
-	return int32(p1.X >> fxdFloatShift)
+
+// vector addition
+func (v1 FxdFPV2) Add(v2 FxdFPV2) FxdFPV2 {
+	return FxdFPV2{v1.X + v2.X, v1.Y + v2.Y}
 }
-func (p1 FxdV2) YInt32() int32 {
-	return int32(p1.Y >> fxdFloatShift)
+
+// converts fixedpoint floating value to int32
+func (v fxdFP) ToInt32() int32 {
+	return int32(v >> fxdFloatShift)
 }

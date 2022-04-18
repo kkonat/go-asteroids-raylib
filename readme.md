@@ -17,7 +17,9 @@ _Controls:_
 - [**L**] - Weapons select
 - [**;**] - force field - pushes you away from Rocks nearby
 - [**'**] - Weapons select
-- [**F1**] - toggle debug mode ()
+- [**Z**] = Spotlight mode
+- [**F1**] - toggle debug mode 
+- [**F2**] - GUI parameters tweaking
 - The closer is the ship to the purple planet, the faster it tops up the fuel
 
 Runs in a 1440 x 720 window. Keeps around 60 fps on Ryzen 7 (8core) with RX 480 gpu.

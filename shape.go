@@ -37,7 +37,7 @@ func (s *shape) Draw(pos V2, rot float64, colFill, colLine rl.Color) {
 
 	var minx, maxx, miny, maxy int32
 	for i, p := range s.points {
-		p2 := rotM.PMulV(p)
+		p2 := rotM.MulV(p)
 		p2.Incr(pos)
 		if i > 0 {
 			_triangle(p2, p1, pos, colFill) // sequence of vertices matters must be counter clockwise, otherwise nothing is drawn
@@ -74,7 +74,7 @@ func (s *shape) DrawThin(pos V2, rot float64, colFill, colLine rl.Color, thickne
 	var minx, maxx, miny, maxy int32
 
 	for i, p := range s.points {
-		p2 := rotM.PMulV(p)
+		p2 := rotM.MulV(p)
 		p2.Incr(pos)
 
 		if i > 0 {
@@ -84,9 +84,6 @@ func (s *shape) DrawThin(pos V2, rot float64, colFill, colLine rl.Color, thickne
 			n2 := p2.Sub(pos).Norm()
 
 			color := Game.VisibleLights.ComputeColor(p1, p2, n1, n2, _ColorfromRlColor(colLine))
-
-			// _line(p1, p1.Add(n1.MulA(5)), rl.White) // Debug draw nrormals
-			// _line(p2, p2.Add(n2.MulA(5)), rl.White)
 
 			_lineThick(p1, p2, thickness, _rlColorFromColor(color))
 

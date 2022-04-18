@@ -25,7 +25,7 @@ func main() {
 	// 		log.Println("panic occurred:", err)
 	// 	}
 	// }()
-	rl.SetTraceLog(rl.LogNone)
+	rl.SetTraceLog(rl.LogAll)
 
 	rand.Seed(time.Now().UnixNano())
 	_initNoise()
@@ -38,22 +38,101 @@ func main() {
 
 	gui.LoadGuiStyle("res/dark.style")
 
+	var tnow, tprev int64
 	for !rl.WindowShouldClose() {
-		Game.processKeys()
-		Game.processMouse()
-		Game.playMessages()
+		processKeys()
+		processMouse()
+
+		Game.playCyclicMessages()
 		Game.GameDraw()
-		Game.GameUpdate()
+
+		tnow = time.Now().UnixMicro()
+		elapsed := tnow - tprev
+		tprev = tnow
+		dt := float64(elapsed) / 16666.0
+
+		Game.GameUpdate(dt)
 	}
 }
 
 var fflight *OmniLight
 
-func (g *game) processKeys() {
+func shipNavKeys() {
+	// rotate ship left
+	if rl.IsKeyDown('A') {
+		Game.ship.rotate(-.2)
+	}
+	// rotate right
+	if rl.IsKeyDown('D') {
+		Game.ship.rotate(.2)
+	}
+	// start applying  thrust
+	if rl.IsKeyPressed('W') || rl.IsKeyPressed('S') {
+		Game.sm.Play(sThrust)
+		Game.ship.isSliding = false
+	}
+	// continue applying more thrust
+	if rl.IsKeyDown('W') {
+		Game.ship.Thrust(1.0)
+	}
+	// continue applying small thrust
+	if rl.IsKeyDown('S') {
+		Game.ship.Thrust(0.5)
+	}
+	// stop applying thrust
+	if rl.IsKeyReleased('W') || rl.IsKeyReleased('S') {
+		Game.ship.Thrust(0)
+		Game.ship.isSliding = true
+		Game.sm.Stop(sThrust)
+	}
+	// slow down rotation
+	if rl.IsKeyDown(rl.KeyTab) {
+		Game.ship.rotSpeed *= 0.9
+	}
+
+}
+func shipSystemsKeys() {
+	if rl.IsKeyPressed('Z') {
+		Game.ship.SpotlightMode()
+	}
+	
+	// start emit forceField
+	if rl.IsKeyPressed(';') {
+		fflight = &OmniLight{Game.ship.pos, Color{0, 0.78, 0.78, 1.0}, 100}
+		Game.VisibleLights.AddLight(fflight)
+		Game.ship.forceField = true
+		Game.sm.Play(sForceField)
+	}
+	// continue emit forceField
+	if rl.IsKeyDown(';') {
+		fflight.Pos = Game.ship.pos
+		if Game.ship.energy > 0 {
+			Game.ship.energy -= 0.1
+		}
+	}
+	// stop emit forceField
+	if rl.IsKeyReleased(';') {
+		Game.VisibleLights.DeleteLight(fflight)
+		Game.ship.forceField = false
+		Game.sm.Stop(sForceField)
+	}
+	// "shields +13"
+	if rl.IsKeyPressed('F') {
+		if Game.ship.energy > 130 && Game.ship.shields+13 < 100 {
+			Game.addParticle(newTextPart(Game.ship.pos, Game.ship.speed.MulA(0.5),
+				"shields +13", 20, 1, 0.5, true, rl.Yellow, rl.Gold))
+			Game.sm.Play(sChargeUp)
+			Game.ship.shields += 13
+			Game.ship.energy -= 130
+		}
+	}
+}
+func weaponsKeys() {
+	// Buy missiles
 	if rl.IsKeyPressed('Q') {
 		wpn := Game.weapons[Game.curWeapon]
 		cost := int(20 * wpn.cost)
-		if Game.ship.cash > cost {
+		if Game.ship.cash >= cost {
 			Game.sm.Play(sMissilesDlvrd)
 			Game.addParticle(newTextPart(Game.ship.pos, Game.ship.speed.MulA(0.5),
 				"+ 20 x "+wpn.name, 20, 1, 1, true, rl.Purple, rl.DarkPurple))
@@ -62,45 +141,7 @@ func (g *game) processKeys() {
 			Game.weapons[Game.curWeapon] = wpn
 		}
 	}
-	if rl.IsKeyPressed('M') {
-		if !Game.sm.Mute {
-			Game.sm.StopAll()
-		}
-		Game.sm.Mute = !Game.sm.Mute
-
-	}
-	if rl.IsKeyDown('A') { // rotate left
-		Game.ship.rotate(-.2)
-	}
-	if rl.IsKeyPressed('S') { // small thrust
-		Game.sm.Play(sThrust)
-		Game.ship.isSliding = false
-	}
-	if rl.IsKeyDown('S') { // hold thrust
-		Game.ship.thrust(0.5)
-	}
-	if rl.IsKeyReleased('S') { // end thrust
-		Game.ship.thrust(0)
-		Game.ship.isSliding = true
-		Game.sm.Stop(sThrust)
-	}
-	if rl.IsKeyPressed(';') { //forceField
-		fflight = &OmniLight{Game.ship.pos, Color{0, 0.78, 0.78, 1.0}, 100}
-		Game.VisibleLights.AddLight(fflight)
-		Game.ship.forceField = true
-		Game.sm.Play(sForceField)
-	}
-	if rl.IsKeyDown(';') {
-		fflight.Pos = Game.ship.pos
-		if Game.ship.energy > 0 {
-			Game.ship.energy -= 0.1
-		}
-	}
-	if rl.IsKeyReleased(';') { // hold thrust
-		Game.VisibleLights.DeleteLight(fflight)
-		Game.ship.forceField = false
-		Game.sm.Stop(sForceField)
-	}
+	// cycle weapon -
 	if rl.IsKeyPressed('L') {
 		if Game.curWeapon > 0 {
 			Game.curWeapon--
@@ -111,71 +152,59 @@ func (g *game) processKeys() {
 		str := fmt.Sprintf(">%s<", (Game.weapons)[Game.curWeapon].name)
 		Game.addParticle(newTextPart(Game.ship.pos, Game.ship.speed.MulA(0.5),
 			str, 20, 1, 1, true, rl.Purple, rl.Red))
-	} // cycle weapon left
+	}
+	// cycle weapon +
 	if rl.IsKeyPressed('\'') {
 		Game.curWeapon++
 		Game.curWeapon %= len(Game.weapons)
 		str := fmt.Sprintf(">%s<", Game.weapons[Game.curWeapon].name)
 		Game.addParticle(newTextPart(Game.ship.pos, Game.ship.speed.MulA(0.5),
 			str, 20, 1, 1, true, rl.Purple, rl.Red))
-
-	} // cycle weapon right
-
-	if rl.IsKeyPressed(rl.KeyF1) { /// debug
-		debug = !debug
 	}
-	if rl.IsKeyPressed(rl.KeyF2) { /// debug
-		showgui = !showgui
-	}
-	if rl.IsKeyPressed('R') { // reset shields
-		Game.sm.Play(sOinx)
-		Game.ship.pos = V2{X: Game.gW / 2, Y: Game.gH / 2}
-		Game.ship.speed = V2{}
-		Game.ship.shields = 100
-		Game.ship.energy = 1000
-		Game.ship.destroyed = false
-	}
-	if rl.IsKeyPressed('F') { // reset shields
-		if Game.ship.energy > 130 && Game.ship.shields+13 < 100 {
-			Game.addParticle(newTextPart(Game.ship.pos, Game.ship.speed.MulA(0.5),
-				"shields +13", 20, 1, 0.5, true, rl.Yellow, rl.Gold))
-			Game.sm.Play(sChargeUp)
-			Game.ship.shields += 13
-			Game.ship.energy -= 130
-		}
-	}
-	if rl.IsKeyPressed('P') { // pause
-		Game.paused = !Game.paused
-		Game.sm.StopAll()
-	}
-	if rl.IsKeyPressed('W') { // big thrust
-		Game.sm.Play(sThrust)
-		Game.ship.isSliding = false
-	}
-	if rl.IsKeyDown('W') {
-		Game.ship.thrust(1.0)
-	}
-	if rl.IsKeyReleased('W') { // -----
-		Game.ship.thrust(0)
-		Game.ship.isSliding = true
-		Game.sm.Stop(sThrust)
-	}
-	if rl.IsKeyDown('D') { // rotate right
-		Game.ship.rotate(.2)
-	}
-	if rl.IsKeyPressed(rl.KeyLeftControl) { // fire
+	// fire
+	if rl.IsKeyPressed(rl.KeyLeftControl) {
 		wpn := Game.weapons[Game.curWeapon]
 		if wpn.curCap > 0 {
 			wpn.curCap -= 1
 			Game.weapons[Game.curWeapon] = wpn
 			if len(Game.missiles) < maxMissiles {
-				launchMissile(g, Game.curWeapon)
+				Game.launchMissile()
 				Game.sm.Play(sLaunch)
 			}
 		}
 	}
-	if rl.IsKeyDown(rl.KeyTab) { // slow down rotation
-		Game.ship.rotSpeed *= 0.9
-	}
+}
 
+func gameKeys() {
+	// mute / unmute
+	if rl.IsKeyPressed('M') {
+		if !Game.sm.Mute {
+			Game.sm.StopAll()
+		}
+		Game.sm.Mute = !Game.sm.Mute
+	}
+	// debug
+	if rl.IsKeyPressed(rl.KeyF1) {
+		debug = !debug
+	}
+	// gui
+	if rl.IsKeyPressed(rl.KeyF2) {
+		showgui = !showgui
+	}
+	// reset shields
+	if rl.IsKeyPressed('R') {
+		Game.sm.Play(sOinx)
+		Game.ship.Respawn()
+	}
+	// pause
+	if rl.IsKeyPressed('P') {
+		Game.paused = !Game.paused
+		Game.sm.StopAll()
+	}
+}
+func processKeys() {
+	shipNavKeys()
+	weaponsKeys()
+	shipSystemsKeys()
+	gameKeys()
 }

@@ -57,7 +57,7 @@ func (m *normalMissile) Draw() {
 
 	m.shape.Draw(m.motion.pos, m.motion.rot, rl.Black, rl.DarkGray)
 
-	idx := uint8(int(tickTock) + *((*int)(unsafe.Pointer(m))))
+	idx := uint8(int(Game.tickTock) + *((*int)(unsafe.Pointer(m))))
 	disturb := _noise2D(idx * 4).MulA(6).SubA(3)
 	p1 := m.motion.pos
 	p2 := p1.Sub(m.motion.speed.MulA(3)).Add(disturb)
@@ -122,7 +122,7 @@ func (m *guidedMissile) Move(g *game, dt float64) {
 		}
 	}
 	spd := m.launchSpeed
-	m.speed = v.Cs(m.rot).MulA(spd)
+	m.speed = v.RotV(m.rot).MulA(spd)
 
 	speed := m.speed.MulA(dt)
 	m.pos.Incr(speed)
@@ -137,13 +137,13 @@ func newMissile(pos V2, spd, rot float64) *aMissile {
 	m.shape = newShape(missileShape)
 	m.pos = pos
 	m.rot = rot
-	dir := v.Cs(rot)
+	dir := v.RotV(rot)
 	m.speed = dir.MulA(m.launchSpeed)
 
 	return m
 }
-func launchMissile(g *game, mtype int) {
-
+func (g *game) launchMissile() {
+	mtype := g.curWeapon
 	sSpd := g.ship.speed.Len()
 
 	switch mtype {

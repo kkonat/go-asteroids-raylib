@@ -2,6 +2,7 @@ package main
 
 import (
 	"math"
+	v "rlbb/lib/vector"
 
 	"github.com/fogleman/ease"
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -74,6 +75,8 @@ type Lighting struct {
 	sources []LightSource
 }
 
+var slshader rl.Shader
+
 type OmniLight struct {
 	Pos      V2
 	Col      Color
@@ -81,7 +84,7 @@ type OmniLight struct {
 }
 type SpotLight struct {
 	OmniLight
-	Dir   V2
+	Dir   float64
 	Angle float64
 	Blur  float64
 }
@@ -89,6 +92,7 @@ type SpotLight struct {
 func newLighting() *Lighting {
 	l := new(Lighting)
 	l.sources = make([]LightSource, 0, 120)
+	slshader = rl.LoadShader("shaders/base.vs", "shaders/spotlight.fs")
 	return l
 }
 
@@ -152,6 +156,30 @@ func (ol OmniLight) ComputeColor(at, normal V2, col Color) Color {
 func (ol OmniLight) Draw() {
 	rl.DrawCircleGradient(int32(ol.Pos.X), int32(ol.Pos.Y), float32(ol.Strength), ColorToRlColorFade(ol.Col, 0.4), rl.NewColor(0, 0, 0, 0))
 }
-func (ol *SpotLight) ComputeColor(at, normal V2, col rl.Color) rl.Color {
-	return rl.Black
+func (sl *SpotLight) ComputeColor(at, normal V2, col Color) Color {
+	dir2light := at.Sub(sl.Pos).Norm()
+	liDir := v.RotV(sl.Dir)
+	cone := math.Cos(sl.Angle * rl.Deg2rad / 2)
+	dist2 := at.Sub(sl.Pos).Len2()
+	if dir2light.NormDot(liDir) > cone && dist2 < sl.Strength*sl.Strength {
+		return sl.OmniLight.ComputeColor(at, normal, col).MulA(0.8)
+	} else {
+		return newColorRGB(0, 0, 0)
+	}
+}
+func (sl *SpotLight) Draw() {
+	pos := make([]float32, 2)
+	pos[0], pos[1] = float32(sl.Pos.X), float32(Game.gH-sl.Pos.Y)
+	size := make([]float32, 1)
+	size[0] = float32(sl.Strength)
+	p1 := sl.Pos.Add(v.RotV(sl.Dir + sl.Angle/2).MulA(sl.Strength))
+	p2 := sl.Pos.Add(v.RotV(sl.Dir - sl.Angle/2).MulA(sl.Strength))
+
+	rl.SetShaderValue(slshader, rl.GetShaderLocation(slshader, "pos"), pos, rl.ShaderUniformVec2)
+	rl.SetShaderValue(slshader, rl.GetShaderLocation(slshader, "size"), size, rl.ShaderUniformFloat)
+	rl.BeginShaderMode(slshader)
+	_triangle(sl.Pos, p1, p2, ColorToRlColor(sl.Col))
+	//rl.DrawRectangleV(rl.Vector2{0, 0}, rl.Vector2{float32(Game.gW), float32(Game.gH)}, rl.Yellow)
+
+	rl.EndShaderMode()
 }

@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	qt "rlbb/lib/quadtree"
 	v "rlbb/lib/vector"
+	"time"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
@@ -147,7 +148,7 @@ func (g *game) drawForceField() {
 			rl.Fade(color.RGBA{0, 200, 200, 255}, 0.25),
 			rl.Fade(color.RGBA{0, 240, 200, 255}, 0.0))
 		for a := float64(10) * rnd(); a < 360+float64(10)*rnd(); a += 1 + 10*rnd() {
-			p := v.Cs(a).MulA(float64(forceFieldRadius) * rnd())
+			p := v.RotV(a).MulA(float64(forceFieldRadius) * rnd())
 			_lineThick(g.ship.pos, g.ship.pos.Add(p), rand.Float32()*20+10,
 				rl.Fade(color.RGBA{0, 100, 100, 127}, 0.05))
 			c++
@@ -180,7 +181,7 @@ func (g *game) processForceField() {
 }
 
 func (g *game) processShipHits() {
-	v := v.Cs(g.ship.rot)
+	v := v.RotV(g.ship.rot)
 
 	var circles [3]*circle
 
@@ -209,13 +210,18 @@ func (g *game) processShipHits() {
 					g.sm.PlayFor(sScratch, 80)
 				} else {
 					if !debug {
-						g.addParticle(newSparks(g.ship.pos, g.ship.speed, 200, 260, 5, rl.White, rl.Red))
-						malFunXT = false
 						if !g.ship.destroyed {
-
-							g.sm.Play(sExplodeShip)
+							go func() {
+								for i := 0; i < 3; i++ {
+									g.addParticle(newSparks(g.ship.pos.Add(V2{rndSym(15), rndSym(15)}), g.ship.speed, 3, 1900, 550, 4, rl.White, rl.Red))
+									time.Sleep(time.Duration(111) * time.Millisecond)
+								}
+								time.Sleep(time.Duration(66) * time.Millisecond)
+								g.addParticle(newSparks(g.ship.pos, g.ship.speed, 6, 10600, 990, 6, rl.White, rl.Red))
+								g.sm.Play(sExplodeShip)
+							}()
+							g.ship.Destroy()
 						}
-						g.ship.destroyed = true
 					}
 					//game_over()
 				}
@@ -229,28 +235,6 @@ func (g *game) processShipHits() {
 
 var cycle, corrupted int
 
-func (g *game) checkIfOntheList(ptcls []*Rock) (int, any) {
-	var non int
-	nonl := make([]*Rock, 0)
-	for i := range ptcls {
-		found := false
-		for el := g.rocks.Front(); el != nil; el = el.Next() {
-			if ptcls[i] == el.Value {
-				found = true
-				break
-			}
-		}
-		if !found {
-			non++
-			nonl = append(nonl, ptcls[i])
-		}
-	}
-	if non > 0 {
-		return non, nonl[0]
-	} else {
-		return 0, nil
-	}
-}
 func (g *game) processMissileHits() {
 	const mr = 10 // missile radius
 	var hit bool
@@ -288,7 +272,7 @@ func (g *game) processMissileHits() {
 				if expl := newExplosion(missile.getData().pos, missile.getData().speed, 30, 0.5); g.addParticle(expl) {
 					Game.VisibleLights.AddLight(expl.light) // only add light
 				}
-				g.addParticle(newSparks(missile.getData().pos, missile.getData().speed, 100, 100, 2.0, rl.Orange, rl.Red))
+				g.addParticle(newSparks(missile.getData().pos, missile.getData().speed, 1, 100, 100, 2.0, rl.Orange, rl.Red))
 
 				// sound
 				g.sm.PlayPM(sExpl, 0.5+rnd32())

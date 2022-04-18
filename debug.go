@@ -60,7 +60,7 @@ func (gme *game) debugQt() {
 			str = fmt.Sprintf("\tNumGC = %v\n", m.NumGC)
 			rl.DrawText(str, 0, inc(&line), 16, rl.Gray)
 		}
-		rl.DrawTextEx(vectorFont, "DEBUG MODE", rl.Vector2{X: float32(720 - rl.MeasureText("DEBUG", 99)), Y: float32(590)}, 99, 0, rl.DarkPurple)
+		rl.DrawTextEx(gme.vectorFont, "DEBUG MODE", rl.Vector2{X: float32(720 - rl.MeasureText("DEBUG", 99)), Y: float32(590)}, 99, 0, rl.DarkPurple)
 
 	}
 }

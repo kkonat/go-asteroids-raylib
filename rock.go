@@ -56,7 +56,7 @@ func (r *Rock) buildShape() {
 	for i := 0; i < n; i++ {
 		angle += step + rnd()*step/2 - step/4
 		r1 := r.radius + rnd()*r.radius/4 - r.radius/8
-		p := v.Cs(angle)
+		p := v.RotV(angle)
 		data[i] = p.MulA(r1)
 	}
 	r.shape = newShape(data)

@@ -76,6 +76,7 @@ const (
 	qDoesntFit   = 5
 )
 
+// checks quadrant of a tree element
 func (q *QuadTree[T]) getQuadrant(r Rect) int {
 
 	quadrant := qDoesntFit
@@ -101,30 +102,15 @@ func (q *QuadTree[T]) getQuadrant(r Rect) int {
 	}
 	return quadrant
 }
-func (q *QuadTree[T]) Find(obj T) bool {
-	found := false
-	if q.Nodes[0] == nil {
-		for _, o := range q.Objects {
-			if o == obj {
-				return true
-			}
-		}
-	} else {
-		found = found || q.Nodes[0].Find(obj)
-		found = found || q.Nodes[1].Find(obj)
-		found = found || q.Nodes[2].Find(obj)
-		found = found || q.Nodes[3].Find(obj)
-	}
-	return found
-}
 
+// Removes an element from the quadree
 func (q *QuadTree[T]) Remove(objTbRemved T) bool {
 	removed := false
 	if q.Nodes[0] == nil {
 		for i, o := range q.Objects {
 			if o == objTbRemved {
-				var zv T
-				q.Objects[i] = zv
+				var zeroValue T
+				q.Objects[i] = zeroValue // hack to assign a zero value of an arbitrary type T to a tree node
 				q.Objects = append(q.Objects[:i], q.Objects[i+1:]...)
 				q.Total--
 				removed = true
@@ -143,22 +129,7 @@ func (q *QuadTree[T]) Remove(objTbRemved T) bool {
 	return removed
 }
 
-func (q *QuadTree[T]) Print(find any) {
-	//fmt.Printf("qt[%v]:", q.Total)
-	if q.Nodes[0] == nil {
-		for i, o := range q.Objects {
-			if o == find {
-				fmt.Printf("QT %d. |%p| ", i, o)
-			}
-		}
-	} else {
-		q.Nodes[0].Print(find)
-		q.Nodes[1].Print(find)
-		q.Nodes[2].Print(find)
-		q.Nodes[3].Print(find)
-	}
-}
-
+// inserts an element into the quadree
 func (q *QuadTree[T]) Insert(obj T) {
 
 	q.Total++
@@ -172,7 +143,7 @@ func (q *QuadTree[T]) Insert(obj T) {
 	}
 
 	q.Objects = append(q.Objects, obj) // if it doesn't fit into subquadrant add it here
-	//	fmt.Printf("+[%p] ", obj)
+
 	if (len(q.Objects) > qtMaxObjects) && (q.Level < qtMaxLevels) {
 		if q.Nodes[0] == nil {
 			q.Split()
@@ -193,18 +164,15 @@ func (q *QuadTree[T]) Insert(obj T) {
 	}
 }
 
+// returns a slice of objects that may collide with the given Rectangle AND which are within the minimum distance squared
 func (q *QuadTree[T]) MayCollide(r Rect, miniDist2 int32) []T {
 
 	quadrant := q.getQuadrant(r)
 
-	collidingObjects := make([]T, 0) // := q.Objects
-	//collidingObjects = append(collidingObjects, q.Objects...)
-	for i, o := range q.Objects {
-		dist2 := (o.BRect().X-r.X)*(o.BRect().X-r.X) + (o.BRect().Y-r.Y)*(o.BRect().Y-r.Y)
-		if dist2 < miniDist2 {
-			collidingObjects = append(collidingObjects, q.Objects[i])
+	collidingObjects := make([]T, 0) // empty slice
 
-		}
+	for i := range q.Objects {
+		collidingObjects = append(collidingObjects, q.Objects[i])
 	}
 	if q.Nodes[0] != nil {
 		if quadrant != qDoesntFit {

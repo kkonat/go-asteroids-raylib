@@ -32,7 +32,7 @@ func newTextPart(pos, speed V2, text string, size int32, duration, growSpd float
 	tp.pos = pos
 	tp.text = text
 	if randomDir {
-		tp.speed = v.Cs(rnd() * 360)
+		tp.speed = v.RotV(rnd() * 360)
 	}
 	tp.size = float32(size)
 	tp.life = uint8(duration * FPS)
@@ -67,7 +67,7 @@ func (tp *textPart) Draw() {
 
 type sparks struct {
 	timer, timerMax        int
-	positions, speeds      []v.FxdV2
+	positions, speeds      []v.FxdFPV2
 	lives, maxlives, seeds []uint8
 	life                   int
 	sparksNo               int
@@ -75,12 +75,12 @@ type sparks struct {
 }
 
 // emits  sparks particles
-func newSparks(pos, mspeed V2, count int, maxradius, duration float64, sCol, eCol rl.Color) *sparks {
+func newSparks(pos, mspeed V2, speedmul float64, count int, maxradius, duration float64, sCol, eCol rl.Color) *sparks {
 	s := new(sparks)
 	s.sparksNo = count + rand.Intn(count/2)
 	speed := 0.5 + rnd()*1.5
-	s.positions = make([]v.FxdV2, s.sparksNo)
-	s.speeds = make([]v.FxdV2, s.sparksNo)
+	s.positions = make([]v.FxdFPV2, s.sparksNo)
+	s.speeds = make([]v.FxdFPV2, s.sparksNo)
 	s.lives = make([]uint8, s.sparksNo)
 	s.maxlives = make([]uint8, s.sparksNo)
 	s.seeds = make([]uint8, s.sparksNo)
@@ -91,11 +91,15 @@ func newSparks(pos, mspeed V2, count int, maxradius, duration float64, sCol, eCo
 	s.life = frames
 	for i := 0; i < s.sparksNo; i++ {
 		angle += (360 / float64(s.sparksNo)) + rndSym(15)
-		s.positions[i] = pos.ToV2int()
-		sp := mspeed.Add(v.RotV(angle).MulA(5 * speed * (0.5 + rnd())))
-		s.speeds[i] = sp.ToV2int()
+		s.positions[i] = pos.ToFxdFPV2()
+		sp := mspeed.Add(v.RotV(angle).MulA(5 * speed * speedmul * rnd()))
+		s.speeds[i] = sp.ToFxdFPV2()
+		s.positions[i] = s.positions[i].Add(s.speeds[i])
 		s.maxlives[i] = uint8(frames/2 + rand.Intn(frames/2))
 		s.seeds[i] = uint8(rand.Intn(256))
+		if s.seeds[i] == 0 {
+			s.seeds[i] = 1
+		}
 	}
 
 	return s
@@ -114,7 +118,7 @@ const damp = 255 // (1<<8) * 0.996
 func (s *sparks) Animate() {
 	for i := 0; i < s.sparksNo; i++ {
 		age := float64(s.lives[i]) / 10
-		disturb := _noise2D(s.lives[i] + s.seeds[i]).MulA(age).SubA(age / 2).ToV2int()
+		disturb := _noise2D(s.lives[i] + s.seeds[i]).MulA(age).SubA(age / 2).ToFxdFPV2()
 
 		s.speeds[i] = s.speeds[i].MulA(damp)
 		s.positions[i] = s.positions[i].Add(s.speeds[i].Add(disturb))
@@ -197,19 +201,23 @@ func (e *explosion) Draw() {
 
 	}
 	if e.timer < e.timerMax/2 { // phase 2 - fireball
+		rl.BeginBlendMode(rl.BlendAdditive)
 		_disc(e.position, e.r, rl.Yellow)
+		rl.EndBlendMode()
 		e.light.Strength = ease.OutBounce(float64(1-t)) * explosionLightStrength
 
 	} else { // phase 3 black grow
 		r := e.r*2 - e.r/2
-		t := float32((e.timer - e.timerMax/2)) / float32(e.timerMax/2)
+		t := float32((e.timer - e.timerMax)) / float32(e.timerMax)
+		rl.BeginBlendMode(rl.BlendAdditive)
 		_gradientdisc(e.position, e.maxr, rl.ColorAlpha(rl.Yellow, 1-t), rl.ColorAlpha(rl.Orange, 1-t))
+		rl.EndBlendMode()
 		_gradientdisc(e.offs, r, rl.Fade(rl.Black, 1.0), rl.Fade(rl.Black, float32(ease.OutQuint(float64(1.0-t)))))
 		//_disc(e.offs, r, rl.Black)
 		strength := explosionLightStrength * (1 - e.r*e.r/(r*r))
-		e.light.Strength = float64(strength)
+		e.light.Strength = float64(strength / 2)
 	}
-	if e.timer >= e.timerMax-1 { // deletion - this may never occurr - see TODO above
+	if e.timer >= e.timerMax-1 {
 		Game.VisibleLights.DeleteLight(e.light)
 	}
 }
