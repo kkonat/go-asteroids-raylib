@@ -43,6 +43,24 @@ type Missile struct {
 //delta = 4*qp.V*qp.V+4*(U.len2()-V.V)*qp.qp
 
 func rnd() float64 { return rand.Float64() }
+func Test2(t *testing.T) {
+	rl.SetTraceLog(rl.LogAll)
+	rl.SetConfigFlags(rl.FlagMsaa4xHint | rl.FlagVsyncHint | rl.FlagWindowMaximized)
+	rl.InitWindow(1440, 720, "shader test")
+	rl.SetTargetFPS(60)
+	var sprkshader = rl.LoadShader("base.vs", "spark.fs")
+
+	for !rl.WindowShouldClose() {
+		rl.BeginDrawing()
+		rl.BeginShaderMode(sprkshader)
+		
+		rl.DrawRectangleV(rl.Vector2{0, 0}, rl.Vector2{1440, 720}, rl.Yellow)
+		
+		rl.EndShaderMode()
+		rl.EndDrawing()
+	}
+	rl.UnloadShader(sprkshader)
+}
 func Test1(t *testing.T) {
 	rl.SetTraceLog(rl.LogNone)
 	rl.SetConfigFlags(rl.FlagMsaa4xHint | rl.FlagVsyncHint | rl.FlagWindowMaximized)
@@ -96,7 +114,7 @@ func Test1(t *testing.T) {
 		}
 		rl.BeginDrawing()
 		rl.ClearBackground(rl.Black)
- 
+
 		rl.DrawCircleLines(int32(circle.pos.X), int32(circle.pos.Y), float32(circle.radius), rl.Yellow)
 
 		rl.DrawCircle(int32(missile.pos.X), int32(missile.pos.Y), 10, rl.White)

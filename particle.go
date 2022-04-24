@@ -131,22 +131,49 @@ func (s *sparks) Animate() {
 
 	}
 }
+
+var sprkshader rl.Shader
+var sprkimg *rl.Image
+var sprktextr rl.Texture2D
+
+func initParticleShaders() {
+	sprkshader = rl.LoadShader("shaders/base.vs", "shaders/spark.fs")
+	sprkimg = rl.GenImageColor(64, 64, rl.Black)
+	sprktextr = rl.LoadTextureFromImage(sprkimg)
+	//rl.SetShaderValue(sprkshader, rl.GetShaderLocation(sprkshader, "iResolution"), iResolution, rl.ShaderUniformVec2)
+}
+func deinitParticleShareds() {
+	rl.UnloadShader(sprkshader)
+	rl.UnloadTexture(sprktextr)
+	rl.UnloadImage(sprkimg)
+
+	
+}
+
 func (s *sparks) Draw() {
+	rl.BeginShaderMode(sprkshader)
+	rl.BeginBlendMode(rl.BlendAdditive)
 	for i := 0; i < s.sparksNo; i++ {
 		if s.lives[i] < s.maxlives[i] {
 			if s.lives[i] < s.maxlives[i]/3 {
 				c := _colorBlend(s.lives[i], s.maxlives[i]/3, s.sCol, s.eCol)
-				_rectFxdV2(s.positions[i], 2, c)
+
+				rl.DrawTexture(sprktextr, s.positions[i].X.ToInt32(), s.positions[i].Y.ToInt32(), c)
+				//DrawRectangleV(rl.Vector2{0, 0}, rl.Vector2{float32(Game.gW), float32(Game.gH)}, c)
+				//_rectFxdV2(s.positions[i], 2, c)
 			} else {
 				t := float32(s.lives[i]-s.maxlives[i]/3) / (float32(s.maxlives[i] / 3 * 2))
 				//v := float32(rand.Intn(2))
 				c := _colorBlendFloat(t, s.eCol, rl.Fade(s.eCol, t))
 				//c := rl.ColorFromHSV(t*33, 1.0, v)
 
-				_rectFxdV2(s.positions[i], 2, c) // I assume this is  faster than circle
+				rl.DrawTexture(sprktextr, s.positions[i].X.ToInt32(), s.positions[i].Y.ToInt32(), c)
+				//_rectFxdV2(s.positions[i], 2, c)
 			}
 		}
 	}
+	rl.EndBlendMode()
+	rl.EndShaderMode()
 }
 
 type explosion struct {

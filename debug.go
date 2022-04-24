@@ -28,11 +28,11 @@ func DrawQt(qt *qt.QuadTree[*Rock]) {
 		}
 	}
 }
-func (gme *game) debugQt() {
+func (gme *game) displayDebug() {
 	if debug {
 		if debugShipPos {
-			str := fmt.Sprintf("[%d,%d]", int32(gme.ship.pos.X), int32(gme.ship.pos.Y))
-			rl.DrawText(str, int32(gme.ship.pos.X), int32(gme.ship.pos.Y), 20, rl.Gray)
+			str := fmt.Sprintf("[%d,%d]", int32(gme.ship.Pos.X), int32(gme.ship.Pos.Y))
+			rl.DrawText(str, int32(gme.ship.Pos.X), int32(gme.ship.Pos.Y), 20, rl.Gray)
 		}
 
 		if debugRocksQt {

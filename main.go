@@ -25,6 +25,7 @@ func main() {
 	// 		log.Println("panic occurred:", err)
 	// 	}
 	// }()
+	//rl.SetTraceLog(rl.LogNone)
 	rl.SetTraceLog(rl.LogAll)
 
 	rand.Seed(time.Now().UnixNano())
@@ -87,7 +88,7 @@ func shipNavKeys() {
 	}
 	// slow down rotation
 	if rl.IsKeyDown(rl.KeyTab) {
-		Game.ship.rotSpeed *= 0.9
+		Game.ship.RotSpeed *= 0.9
 	}
 
 }
@@ -95,17 +96,17 @@ func shipSystemsKeys() {
 	if rl.IsKeyPressed('Z') {
 		Game.ship.SpotlightMode()
 	}
-	
+
 	// start emit forceField
 	if rl.IsKeyPressed(';') {
-		fflight = &OmniLight{Game.ship.pos, Color{0, 0.78, 0.78, 1.0}, 100}
+		fflight = &OmniLight{Game.ship.Pos, Color{0, 0.78, 0.78, 1.0}, 100}
 		Game.VisibleLights.AddLight(fflight)
 		Game.ship.forceField = true
 		Game.sm.Play(sForceField)
 	}
 	// continue emit forceField
 	if rl.IsKeyDown(';') {
-		fflight.Pos = Game.ship.pos
+		fflight.Pos = Game.ship.Pos
 		if Game.ship.energy > 0 {
 			Game.ship.energy -= 0.1
 		}
@@ -119,7 +120,7 @@ func shipSystemsKeys() {
 	// "shields +13"
 	if rl.IsKeyPressed('F') {
 		if Game.ship.energy > 130 && Game.ship.shields+13 < 100 {
-			Game.addParticle(newTextPart(Game.ship.pos, Game.ship.speed.MulA(0.5),
+			Game.addParticle(newTextPart(Game.ship.Pos, Game.ship.Speed.MulA(0.5),
 				"shields +13", 20, 1, 0.5, true, rl.Yellow, rl.Gold))
 			Game.sm.Play(sChargeUp)
 			Game.ship.shields += 13
@@ -134,7 +135,7 @@ func weaponsKeys() {
 		cost := int(20 * wpn.cost)
 		if Game.ship.cash >= cost {
 			Game.sm.Play(sMissilesDlvrd)
-			Game.addParticle(newTextPart(Game.ship.pos, Game.ship.speed.MulA(0.5),
+			Game.addParticle(newTextPart(Game.ship.Pos, Game.ship.Speed.MulA(0.5),
 				"+ 20 x "+wpn.name, 20, 1, 1, true, rl.Purple, rl.DarkPurple))
 			Game.ship.cash -= cost
 			wpn.curCap += 20
@@ -150,7 +151,7 @@ func weaponsKeys() {
 		}
 
 		str := fmt.Sprintf(">%s<", (Game.weapons)[Game.curWeapon].name)
-		Game.addParticle(newTextPart(Game.ship.pos, Game.ship.speed.MulA(0.5),
+		Game.addParticle(newTextPart(Game.ship.Pos, Game.ship.Speed.MulA(0.5),
 			str, 20, 1, 1, true, rl.Purple, rl.Red))
 	}
 	// cycle weapon +
@@ -158,7 +159,7 @@ func weaponsKeys() {
 		Game.curWeapon++
 		Game.curWeapon %= len(Game.weapons)
 		str := fmt.Sprintf(">%s<", Game.weapons[Game.curWeapon].name)
-		Game.addParticle(newTextPart(Game.ship.pos, Game.ship.speed.MulA(0.5),
+		Game.addParticle(newTextPart(Game.ship.Pos, Game.ship.Speed.MulA(0.5),
 			str, 20, 1, 1, true, rl.Purple, rl.Red))
 	}
 	// fire

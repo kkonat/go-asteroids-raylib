@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"image/color"
 	"math/rand"
-	"reflect"
 
 	"rlbb/lib/vector"
 
@@ -66,7 +65,7 @@ func _rect(p1 V2, d int32, col rl.Color) {
 	rl.DrawRectangle(int32(p1.X), int32(p1.Y), d, d, col)
 }
 func _rectFxdV2(p1 vector.FxdFPV2, d int32, col rl.Color) {
-	rl.DrawRectangle(p1.X.ToInt32(), p1.Y.ToInt32(), d, d, col)
+	rl.DrawRectangle(p1.X.ToInt32()-d/2, p1.Y.ToInt32()-d/2, d, d, col)
 }
 
 // writes text with multiple Colors
@@ -77,43 +76,19 @@ func _multicolorText(x, y int32, size int32, args ...interface{}) int32 {
 	var width int32
 	var msg string
 	var col color.RGBA
-	//var colType = reflect.TypeOf(col)
-	var value reflect.Value
+
 	width = 0
 	for _, arg := range args {
-		switch reflect.ValueOf(arg).Kind() {
-		case reflect.TypeOf(col).Kind():
-			col = reflect.ValueOf(arg).Interface().(color.RGBA)
-			msg = fmt.Sprintf("%v ", value)
+		switch v := arg.(type) {
+		case color.RGBA:
+			col = v
 			rl.DrawText(msg, int32(x+width), y, size, col)
 			width += rl.MeasureText(msg, size)
-		case reflect.String: // print only these types
-			value = reflect.ValueOf(arg)
-		case reflect.Int:
-			value = reflect.ValueOf(arg)
-		case reflect.Float32:
-			value = reflect.ValueOf(arg)
-		case reflect.Float64:
-			value = reflect.ValueOf(arg)
 		default:
-			panic("not allowed") // rudimentary error checking
+			msg = fmt.Sprintf("%v ", v)
 		}
 	}
 	return int32(width)
-}
-
-func _flashColor[T constraints.Ordered](tickTock uint8, col rl.Color, warn, low, val T) rl.Color {
-	if val < low {
-		if tickTock%20 > 10 {
-			return rl.Red
-		} else {
-			return color.RGBA{127, 0, 0, 255}
-		}
-	} else if val < warn {
-		return rl.Beige
-	} else {
-		return col
-	}
 }
 
 func lerp(t float32, a, b uint8) uint8 {

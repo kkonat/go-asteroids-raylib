@@ -3,6 +3,7 @@ package main
 import (
 	"container/list"
 	"fmt"
+	"image/color"
 	"math"
 	"sync"
 	"time"
@@ -146,6 +147,8 @@ func newGame(w, h int32) *game {
 	g.sm.Msgs = map[int]sm.VoiceMsg{sAmmoLow: {Repeat: 15}, sShieldsLow: {Repeat: 17}}
 	g.sm.EnableLoops(sSpace, sScore)
 
+	initParticleShaders()
+
 	g.VisibleLights = newLighting()
 	g.VisibleLights.AddLight(OmniLight{V2{1440, 400}, _ColorfromRlColor(rl.Purple), 900})
 
@@ -168,7 +171,7 @@ func newGame(w, h int32) *game {
 	g.sprm = newSpriteManager()
 
 	g.ship = newShip(float64(w/2), float64(h/2), 1000, 1000)
-	g.ship.rot = 45 - 180
+	g.ship.Rot = 45 - 180
 	g.VisibleLights.AddLight(g.ship.light)
 	g.VisibleLights.AddLight(g.ship.slight)
 	g.generateRocks(noPreferredRocks)
@@ -207,14 +210,29 @@ func (g *game) playCyclicMessages() {
 }
 
 func (g *game) drawStatusBar() {
+
+	flash := func(col rl.Color, warn, low, val int) rl.Color {
+		if val < low {
+			if Game.tickTock%20 > 10 {
+				return rl.Red
+			} else {
+				return color.RGBA{127, 0, 0, 255}
+			}
+		} else if val < warn {
+			return rl.Beige
+		} else {
+			return col
+		}
+	}
+
 	if !g.paused {
 		wpn := g.weapons[g.curWeapon]
 		rl.DrawRectangle(0, g.sH-20, g.sW, 26, rl.DarkPurple)
 		_multicolorText(20, g.sH-20, 20,
 			"Cash:", rl.Purple, g.ship.cash, rl.Purple, 30, 10,
-			"Shields:", rl.Purple, int(g.ship.shields), _flashColor(Game.tickTock, rl.Purple, 50, shieldsLowLimit, int(g.ship.shields)),
-			"Energy:", rl.Purple, int(g.ship.energy), _flashColor(Game.tickTock, rl.Purple, 500, 100, int(g.ship.energy)),
-			wpn.name+"s :", rl.Purple, wpn.curCap, _flashColor(Game.tickTock, rl.Purple, 30, wpn.lowLimit, wpn.curCap))
+			"Shields:", rl.Purple, int(g.ship.shields), flash(rl.Purple, 50, shieldsLowLimit, int(g.ship.shields)),
+			"Energy:", rl.Purple, int(g.ship.energy), flash(rl.Purple, 500, 100, int(g.ship.energy)),
+			wpn.name+"s :", rl.Purple, wpn.curCap, flash(rl.Purple, 30, wpn.lowLimit, wpn.curCap))
 
 		rl.DrawFPS(g.sW-80, g.sH-20)
 	} else {
@@ -269,15 +287,17 @@ func (gme *game) addParticle(p particle) bool {
 }
 
 func (gme *game) animateParticles() {
-
 	var wg sync.WaitGroup
+
 	for i := 0; i < len(gme.particles); i++ {
+
 		wg.Add(1)
 		go func(idx int) {
 			defer wg.Done()
 			gme.particles[idx].Animate()
 		}(i)
 	}
+
 	wg.Wait()
 	i := 0
 	for i < len(gme.particles) {
@@ -331,8 +351,6 @@ func (gme *game) buildRocksQTree() {
 	}
 }
 
-const starsNo = 1000
-
 func (gme *game) GameDraw() {
 	rl.BeginDrawing()
 
@@ -340,6 +358,7 @@ func (gme *game) GameDraw() {
 
 	gme.sf.draw() // draw starfield
 	gme.drawForceField()
+
 	redsun.SetColor(Color{_noise1D(Game.tickTock)*0.4 + 0.6, 0, 0, 1})
 
 	rl.BeginBlendMode(rl.BlendAdditive)
@@ -349,10 +368,10 @@ func (gme *game) GameDraw() {
 	gme.drawAndDeleteRocks()
 
 	gme.drawParticles()
-	
+
 	gme.ship.Draw()
 
-	gme.debugQt()
+	gme.displayDebug()
 
 	rl.EndTextureMode()
 
@@ -420,12 +439,14 @@ func (gme *game) GameUpdate(dt float64) {
 		gme.buildRocksQTree()
 
 		gme.processMissileHits()
-		gme.processForceField()
-		gme.processShipHits()
+
+		go gme.processForceField()
+		go gme.processShipHits()
 
 		go gme.constrainShip()
 		go gme.constrainRocks()
 		go gme.constrainMissiles()
+
 		gme.animateParticles()
 	}
 }
@@ -455,4 +476,5 @@ func (g *game) finalize() {
 	g.sm.UnloadAll()
 	g.sprm.unloadAll()
 	g.pp.Finalize()
+	deinitParticleShareds()
 }

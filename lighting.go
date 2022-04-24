@@ -77,13 +77,14 @@ type Lighting struct {
 
 var slshader rl.Shader
 
-type OmniLight struct {
+type Light struct {
 	Pos      V2
 	Col      Color
 	Strength float64
 }
+type OmniLight = Light
 type SpotLight struct {
-	OmniLight
+	Light
 	Dir   float64
 	Angle float64
 	Blur  float64
@@ -162,7 +163,7 @@ func (sl *SpotLight) ComputeColor(at, normal V2, col Color) Color {
 	cone := math.Cos(sl.Angle * rl.Deg2rad / 2)
 	dist2 := at.Sub(sl.Pos).Len2()
 	if dir2light.NormDot(liDir) > cone && dist2 < sl.Strength*sl.Strength {
-		return sl.OmniLight.ComputeColor(at, normal, col).MulA(0.8)
+		return sl.Light.ComputeColor(at, normal, col).MulA(0.8)
 	} else {
 		return newColorRGB(0, 0, 0)
 	}
