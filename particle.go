@@ -96,10 +96,7 @@ func newSparks(pos, mspeed V2, speedmul float64, count int, maxradius, duration 
 		s.speeds[i] = sp.ToFxdFPV2()
 		s.positions[i] = s.positions[i].Add(s.speeds[i])
 		s.maxlives[i] = uint8(frames/2 + rand.Intn(frames/2))
-		s.seeds[i] = uint8(rand.Intn(256))
-		if s.seeds[i] == 0 {
-			s.seeds[i] = 1
-		}
+		s.seeds[i] = 1 + uint8(rand.Intn(255))
 	}
 
 	return s
@@ -118,7 +115,7 @@ const damp = 255 // (1<<8) * 0.996
 func (s *sparks) Animate() {
 	for i := 0; i < s.sparksNo; i++ {
 		age := float64(s.lives[i]) / 10
-		disturb := _noise2D(s.lives[i] + s.seeds[i]).MulA(age).SubA(age / 2).ToFxdFPV2()
+		disturb := _noise2D(s.lives[i] + s.seeds[i]).MulA(age/2).SubA(age / 4).ToFxdFPV2()
 
 		s.speeds[i] = s.speeds[i].MulA(damp)
 		s.positions[i] = s.positions[i].Add(s.speeds[i].Add(disturb))
@@ -135,40 +132,43 @@ func (s *sparks) Animate() {
 var sprkshader rl.Shader
 var sprkimg *rl.Image
 var sprktextr rl.Texture2D
+var sprkshdrloc int32
 
 func initParticleShaders() {
 	sprkshader = rl.LoadShader("shaders/base.vs", "shaders/spark.fs")
 	sprkimg = rl.GenImageColor(64, 64, rl.Black)
 	sprktextr = rl.LoadTextureFromImage(sprkimg)
-	//rl.SetShaderValue(sprkshader, rl.GetShaderLocation(sprkshader, "iResolution"), iResolution, rl.ShaderUniformVec2)
+	sprkshdrloc = rl.GetShaderLocation(sprkshader, "time")
+
 }
 func deinitParticleShareds() {
 	rl.UnloadShader(sprkshader)
 	rl.UnloadTexture(sprktextr)
 	rl.UnloadImage(sprkimg)
 
-	
 }
 
 func (s *sparks) Draw() {
 	rl.BeginShaderMode(sprkshader)
 	rl.BeginBlendMode(rl.BlendAdditive)
+
 	for i := 0; i < s.sparksNo; i++ {
+		var time = 256 - float32(s.lives[i])*256/float32(s.maxlives[i])
+
 		if s.lives[i] < s.maxlives[i] {
+
 			if s.lives[i] < s.maxlives[i]/3 {
 				c := _colorBlend(s.lives[i], s.maxlives[i]/3, s.sCol, s.eCol)
 
+				c.A = uint8(time) // pass particle time in alpha channel, it's faster than in uniform
 				rl.DrawTexture(sprktextr, s.positions[i].X.ToInt32(), s.positions[i].Y.ToInt32(), c)
-				//DrawRectangleV(rl.Vector2{0, 0}, rl.Vector2{float32(Game.gW), float32(Game.gH)}, c)
-				//_rectFxdV2(s.positions[i], 2, c)
+
 			} else {
 				t := float32(s.lives[i]-s.maxlives[i]/3) / (float32(s.maxlives[i] / 3 * 2))
-				//v := float32(rand.Intn(2))
 				c := _colorBlendFloat(t, s.eCol, rl.Fade(s.eCol, t))
-				//c := rl.ColorFromHSV(t*33, 1.0, v)
 
+				c.A = uint8(time) // pass particle time in alpha channel, it's faster than in uniform
 				rl.DrawTexture(sprktextr, s.positions[i].X.ToInt32(), s.positions[i].Y.ToInt32(), c)
-				//_rectFxdV2(s.positions[i], 2, c)
 			}
 		}
 	}

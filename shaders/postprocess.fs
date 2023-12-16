@@ -52,7 +52,7 @@ float nn(vec2 p){
     
     float v = (n( vec3(y*.01 +s, 			1., 1.0) ) + .0)
           	 *(n( vec3(y*.011+1000.0+s, 	1., 1.0) ) + .0) 
-          	 *(n( vec3(y*.51+421.0+s, 	1., 1.0) ) + .0)   
+          	 *(n( vec3(y*.51+421.0+s,      	1., 1.0) ) + .0)   
         ;
     //v*= n( vec3( (fragCoord.xy + vec2(s,0.))*100.,1.0) );
    	v*= hash42(   vec2(p.x +iTime*0.01, p.y) ).x +.3 ;
@@ -90,7 +90,7 @@ void main( )
         
         //copy orig
         vec3 outCol = texture(texture0, uv).rgb;
-    if( glitch){
+    if( glitch !=0 ){
        
         //randomly offset slices horizontally
         float maxOffset = AMT/2.0;

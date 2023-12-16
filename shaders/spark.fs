@@ -9,6 +9,7 @@ in vec2 vertPos;
 uniform vec2 iResolution;
 uniform sampler2D texture0;
 uniform vec4 colDiffuse;
+//uniform float time;
 
 // Output fragment color
 out vec4 finalColor;
@@ -36,16 +37,18 @@ void main()
 {
     // Texel color fetching from texture sampler
     //vec4 texelColor = texture(texture0, fragTexCoord)*colDiffuse*fragColor;
+    float time = fragColor.a;
     
     vec2 uv = fragTexCoord-0.5;
    uv *=2;
     vec3 col =vec3(0);
   //  uv *= 16;
     float l = length(uv);
-    float d = 0.024/(l);
+    //float d = 0.024/(l);
+    float d = mix(0.014,0.034,time)/(l);
     float alpha = smoothstep(0.,1.,1-l);
     //col = fragColor.rgb* d;//smoothstep(0.0,1,d*d*d);
-    col = fragColor.rgb * d*alpha;
+    col = mix(vec3(0.2,0,0),fragColor.rgb,time) * d * alpha;
     //col += fragColor.rgb *Star(uv,0.1);
     finalColor = vec4(col,1);
     //finalColor = fragColor*m; // Star(uv, 0.5);

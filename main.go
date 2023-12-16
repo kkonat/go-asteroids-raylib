@@ -25,8 +25,8 @@ func main() {
 	// 		log.Println("panic occurred:", err)
 	// 	}
 	// }()
-	//rl.SetTraceLog(rl.LogNone)
-	rl.SetTraceLog(rl.LogAll)
+	rl.SetTraceLog(rl.LogNone)
+	//rl.SetTraceLog(rl.LogAll)
 
 	rand.Seed(time.Now().UnixNano())
 	_initNoise()

@@ -217,7 +217,7 @@ func (g *game) processShipHits() {
 									time.Sleep(time.Duration(111) * time.Millisecond)
 								}
 								time.Sleep(time.Duration(66) * time.Millisecond)
-								g.addParticle(newSparks(g.ship.Pos, g.ship.Speed, 6, 10600, 990, 6, rl.White, rl.Red))
+								g.addParticle(newSparks(g.ship.Pos, g.ship.Speed, 6, 5600, 990, 6, rl.White, rl.Red))
 								g.sm.Play(sExplodeShip)
 							}()
 							g.ship.Destroy()

@@ -150,7 +150,7 @@ func newGame(w, h int32) *game {
 	initParticleShaders()
 
 	g.VisibleLights = newLighting()
-	g.VisibleLights.AddLight(OmniLight{V2{1440, 400}, _ColorfromRlColor(rl.Purple), 900})
+	g.VisibleLights.AddLight(OmniLight{V2{X: 1440, Y: 400}, _ColorfromRlColor(rl.Purple), 900})
 
 	redsun = &OmniLight{V2{-100, 100}, _ColorfromRlColor(rl.Red), 300}
 	g.VisibleLights.AddLight(redsun)
