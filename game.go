@@ -2,8 +2,10 @@ package main
 
 import (
 	"container/list"
+	"embed"
 	"fmt"
 	"image/color"
+	"log"
 	"math"
 	"sync"
 	"time"
@@ -11,9 +13,12 @@ import (
 	gui "github.com/gen2brain/raylib-go/raygui"
 	rl "github.com/gen2brain/raylib-go/raylib"
 
-	qt "rlbb/lib/quadtree"
-	sm "rlbb/lib/soundmanager"
+	qt "bangbang/lib/quadtree"
+	sm "bangbang/lib/soundmanager"
 )
+
+//go:embed font
+var fontFS embed.FS
 
 const (
 	caption            = "test boom boom game"
@@ -34,6 +39,7 @@ const (
 
 var debug bool
 var showgui bool
+var showKeys bool = true
 
 type game struct {
 	sm   *sm.SoundManager
@@ -55,8 +61,9 @@ type game struct {
 	curWeapon int
 	weapons   map[int]weapon
 
-	vectorFont rl.Font
-	pp         *PostProcess
+	vectorFont      rl.Font
+	vectorFontSmall rl.Font
+	pp              *PostProcess
 
 	// global time counters
 	tnow, tprev int64
@@ -98,7 +105,8 @@ func newPostprocess(w, h int32) *PostProcess {
 	pp.malfunct = make([]float32, 1)
 	pp.iResolution = make([]float32, 2)
 
-	pp.shader = rl.LoadShader("shaders/base.vs", "shaders/postprocess.fs")
+	// pp.shader = rl.LoadShader("shaders/base.vs", "shaders/postprocess.fs")
+	pp.shader = load_shaders("shaders/base.vs", "shaders/postprocess.fs")
 
 	pp.iResolution[0], pp.iResolution[1] = float32(w), float32(h)
 	rl.SetShaderValue(pp.shader, rl.GetShaderLocation(pp.shader, "iResolution"), pp.iResolution, rl.ShaderUniformVec2)
@@ -125,19 +133,19 @@ func newGame(w, h int32) *game {
 	g := new(game)
 	soundFiles := map[int]sm.SoundFile{
 		// Id			  filename        vol  pitch
-		sSpace:         {Fname: "res/space.ogg", Vol: 0.5, Pitch: 1.0},
-		sScore:         {Fname: "res/score.mp3", Vol: 0.1, Pitch: 1.0},
-		sMissilesDlvrd: {Fname: "res/missiles-delivered.ogg", Vol: 0.5, Pitch: 1.0},
-		sThrust:        {Fname: "res/thrust.ogg", Vol: 0.5, Pitch: 1.0},
-		sExpl:          {Fname: "res/expl.ogg", Vol: 0.5, Pitch: 0.65},
-		sLaunch:        {Fname: "res/launch.ogg", Vol: 0.5, Pitch: 1.0},
-		sShieldsLow:    {Fname: "res/warning-shields-low.ogg", Vol: 0.3, Pitch: 1.0},
-		sAmmoLow:       {Fname: "res/warning-ammo-low.ogg", Vol: 0.3, Pitch: 1.0},
-		sOinx:          {Fname: "res/oinxL.ogg", Vol: 0.5, Pitch: 1.0},
-		sExplodeShip:   {Fname: "res/shipexplode.ogg", Vol: 1.0, Pitch: 1.0},
-		sScratch:       {Fname: "res/metalScratch.ogg", Vol: 0.2, Pitch: 1.0},
-		sChargeUp:      {Fname: "res/chargeup.ogg", Vol: 0.2, Pitch: 1.0},
-		sForceField:    {Fname: "res/forcefield2.ogg", Vol: 0.5, Pitch: 1.0},
+		sSpace:         {Fname: "sounds/space.ogg", Vol: 0.5, Pitch: 1.0},
+		sScore:         {Fname: "sounds/score.mp3", Vol: 0.1, Pitch: 1.0},
+		sMissilesDlvrd: {Fname: "sounds/missiles-delivered.ogg", Vol: 0.5, Pitch: 1.0},
+		sThrust:        {Fname: "sounds/thrust.ogg", Vol: 0.5, Pitch: 1.0},
+		sExpl:          {Fname: "sounds/expl.ogg", Vol: 0.5, Pitch: 0.65},
+		sLaunch:        {Fname: "sounds/launch.ogg", Vol: 0.5, Pitch: 1.0},
+		sShieldsLow:    {Fname: "sounds/warning-shields-low.ogg", Vol: 0.3, Pitch: 1.0},
+		sAmmoLow:       {Fname: "sounds/warning-ammo-low.ogg", Vol: 0.3, Pitch: 1.0},
+		sOinx:          {Fname: "sounds/oinxL.ogg", Vol: 0.5, Pitch: 1.0},
+		sExplodeShip:   {Fname: "sounds/shipexplode.ogg", Vol: 1.0, Pitch: 1.0},
+		sScratch:       {Fname: "sounds/metalScratch.ogg", Vol: 0.2, Pitch: 1.0},
+		sChargeUp:      {Fname: "sounds/chargeup.ogg", Vol: 0.2, Pitch: 1.0},
+		sForceField:    {Fname: "sounds/forcefield2.ogg", Vol: 0.5, Pitch: 1.0},
 	}
 	g.SetScreenSize(w, h)
 	rl.SetConfigFlags(rl.FlagMsaa4xHint | rl.FlagVsyncHint | rl.FlagWindowMaximized)
@@ -166,7 +174,8 @@ func newGame(w, h int32) *game {
 
 	g.time = make([]float32, 1)
 	g.sf = newStarfield(w, h, g.time)
-	debug = startWithDebugOn
+
+	// debug = startWithDebugOn
 
 	g.sprm = newSpriteManager()
 
@@ -178,9 +187,19 @@ func newGame(w, h int32) *game {
 
 	g.tprev = time.Now().Local().UnixMicro()
 
-	g.vectorFont = rl.LoadFontEx("res/Vectorb.ttf", 99, nil, 0)
+	fontBytes, err := fontFS.ReadFile("font/Vectorb.ttf")
+	if err != nil {
+		log.Fatalf("failed to read font file: %v", err)
+	}
+	fontData := []byte(fontBytes)
+	// g.vectorFont = rl.LoadFontEx("res/Vectorb.ttf", 99, nil, 0)
+	g.vectorFont = rl.LoadFontFromMemory(".ttf", fontData, int32(len(fontData)), 99, nil, 0)
 	rl.GenTextureMipmaps(&g.vectorFont.Texture)
 	rl.SetTextureFilter(g.vectorFont.Texture, rl.FilterBilinear)
+
+	g.vectorFontSmall = rl.LoadFontFromMemory(".ttf", fontData, int32(len(fontData)), 32, nil, 0)
+	rl.GenTextureMipmaps(&g.vectorFontSmall.Texture)
+	rl.SetTextureFilter(g.vectorFontSmall.Texture, rl.FilterPoint)
 
 	g.weapons = make(map[int]weapon)
 	g.weapons[missileNormal] = weapon{"missile", 100, 100, 20, 4.0, 1.6}
@@ -243,6 +262,38 @@ func (g *game) drawStatusBar() {
 			col = rl.Purple
 		}
 		rl.DrawText("**** GAME PAUSED ***", 20, g.sH-20, 20, col)
+	}
+}
+func (g *game) drawKeys() {
+	help := []string{
+		"                      Keys:",
+		"|F1| - this help",
+		"",
+		"Left hand:",
+		"|R| - restart",
+		"|A| |D| - rotate",
+		"|W| |S| - thrust",
+		"|F| - top up shields +13",
+		"|ctrl| - fire",
+		"|Q| - buy missiles",
+		"|F1| - this help",
+		"|F2| |F3| - debug on/off",
+		"|Z| - light beam type",
+		"",
+		"           Right hand:",
+		"           |L| |'| - cycle weapons left/right",
+		"           |;| - power shield - uses energy",
+		"           |M| - mute sound",
+		"",
+		"|Esc| - quit",
+	}
+	lines := int32(len(help))
+	line_height := int32(32)
+	y := (g.sH - line_height*lines) / 2
+	for _, line := range help {
+		rl.DrawTextEx(g.vectorFontSmall, line, rl.Vector2{X: float32(20 + 1), Y: float32(y)}, float32(line_height), 1, rl.Purple)
+		rl.DrawTextEx(g.vectorFontSmall, line, rl.Vector2{X: float32(20 + 0), Y: float32(y)}, float32(line_height), 1, rl.Magenta)
+		y += line_height
 	}
 }
 
@@ -384,6 +435,9 @@ func (gme *game) GameDraw() {
 
 	gme.drawStatusBar()
 	gme.drawGUI()
+	if showKeys {
+		gme.drawKeys()
+	}
 	rl.EndDrawing()
 
 	gme.tickTock++

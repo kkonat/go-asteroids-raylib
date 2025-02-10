@@ -1,10 +1,10 @@
 package main
 
 import (
+	v "bangbang/lib/vector"
 	"image/color"
 	"math"
 	"math/rand"
-	v "rlbb/lib/vector"
 	"unsafe"
 
 	rl "github.com/gen2brain/raylib-go/raylib"

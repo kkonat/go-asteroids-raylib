@@ -1,8 +1,8 @@
 package main
 
 import (
+	v "bangbang/lib/vector"
 	"math"
-	v "rlbb/lib/vector"
 
 	"github.com/fogleman/ease"
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -93,7 +93,8 @@ type SpotLight struct {
 func newLighting() *Lighting {
 	l := new(Lighting)
 	l.sources = make([]LightSource, 0, 120)
-	slshader = rl.LoadShader("shaders/base.vs", "shaders/spotlight.fs")
+	// slshader = rl.LoadShader("shaders/base.vs", "shaders/spotlight.fs")
+	slshader = load_shaders("shaders/base.vs", "shaders/spotlight.fs")
 	return l
 }
 

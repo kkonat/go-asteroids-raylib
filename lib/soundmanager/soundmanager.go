@@ -1,10 +1,28 @@
 package soundmanager
 
 import (
+	"embed"
+	"log"
 	"time"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
+
+//go:embed sounds/*
+var soundsFS embed.FS
+
+func load_sound(filename string) rl.Sound {
+	ext := filename[len(filename)-4:]
+	soundBytes, err := soundsFS.ReadFile(filename)
+	if err != nil {
+		log.Fatalf("failed to read sound file: %v", err)
+	}
+	soundData := []byte(soundBytes)
+	wave := rl.LoadWaveFromMemory(ext, soundData, int32(len(soundData)))
+	sound := rl.LoadSoundFromWave(wave)
+
+	return sound
+}
 
 // TODO
 // for playback/panning https://bitbucket.org/StephenPatrick/go-winaudio/src/master/winaudio/
@@ -50,11 +68,8 @@ func NewSoundManager(mute bool, SoundFiles map[int]SoundFile) *SoundManager {
 	sm.sounds = make([]*sound, len(SoundFiles))
 
 	for i, sf := range SoundFiles {
+		rlSnd := load_sound(sf.Fname)
 		snd := new(sound)
-		rlSnd := rl.LoadSound(sf.Fname)
-		if rlSnd.Stream.Buffer == nil {
-			panic("can't load sound, Oh no! " + sf.Fname)
-		}
 		snd.rlSound = rlSnd
 		snd.maxVol, snd.vol = sf.Vol, sf.Vol
 		rl.SetSoundPitch(rlSnd, sf.Pitch)
@@ -106,7 +121,7 @@ func (sm *SoundManager) StopAll() {
 	sm.fade = true
 }
 
-//  called on every frame to check if there are any sounds that need to be faded out
+// called on every frame to check if there are any sounds that need to be faded out
 func (sm *SoundManager) DoFade() {
 	var notFading = 0
 	if sm.fade {

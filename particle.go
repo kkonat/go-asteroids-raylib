@@ -1,9 +1,9 @@
 package main
 
 import (
+	v "bangbang/lib/vector"
 	"log"
 	"math/rand"
-	v "rlbb/lib/vector"
 
 	"github.com/fogleman/ease"
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -115,7 +115,7 @@ const damp = 255 // (1<<8) * 0.996
 func (s *sparks) Animate() {
 	for i := 0; i < s.sparksNo; i++ {
 		age := float64(s.lives[i]) / 10
-		disturb := _noise2D(s.lives[i] + s.seeds[i]).MulA(age/2).SubA(age / 4).ToFxdFPV2()
+		disturb := _noise2D(s.lives[i] + s.seeds[i]).MulA(age / 2).SubA(age / 4).ToFxdFPV2()
 
 		s.speeds[i] = s.speeds[i].MulA(damp)
 		s.positions[i] = s.positions[i].Add(s.speeds[i].Add(disturb))
@@ -135,7 +135,8 @@ var sprktextr rl.Texture2D
 var sprkshdrloc int32
 
 func initParticleShaders() {
-	sprkshader = rl.LoadShader("shaders/base.vs", "shaders/spark.fs")
+	// sprkshader = rl.LoadShader("shaders/base.vs", "shaders/spark.fs")
+	sprkshader = load_shaders("shaders/base.vs", "shaders/spark.fs")
 	sprkimg = rl.GenImageColor(64, 64, rl.Black)
 	sprktextr = rl.LoadTextureFromImage(sprkimg)
 	sprkshdrloc = rl.GetShaderLocation(sprkshader, "time")

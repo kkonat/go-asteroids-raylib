@@ -1,9 +1,9 @@
 package provingground
 
 import (
+	v "bangbang/lib/vector"
 	"math"
 	"math/rand"
-	v "rlbb/lib/vector"
 	"testing"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -49,13 +49,14 @@ func Test2(t *testing.T) {
 	rl.InitWindow(1440, 720, "shader test")
 	rl.SetTargetFPS(60)
 	var sprkshader = rl.LoadShader("base.vs", "spark.fs")
+	// var sprkshader = load_shaders("base.vs", "spark.fs")
 
 	for !rl.WindowShouldClose() {
 		rl.BeginDrawing()
 		rl.BeginShaderMode(sprkshader)
-		
+
 		rl.DrawRectangleV(rl.Vector2{0, 0}, rl.Vector2{1440, 720}, rl.Yellow)
-		
+
 		rl.EndShaderMode()
 		rl.EndDrawing()
 	}

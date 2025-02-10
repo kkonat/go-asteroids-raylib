@@ -1,8 +1,8 @@
 package main
 
 import (
-	qt "rlbb/lib/quadtree"
-	v "rlbb/lib/vector"
+	qt "bangbang/lib/quadtree"
+	v "bangbang/lib/vector"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )

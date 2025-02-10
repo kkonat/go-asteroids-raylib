@@ -1,7 +1,7 @@
 package main
 
 import (
-	v "rlbb/lib/vector"
+	v "bangbang/lib/vector"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )

@@ -5,7 +5,7 @@ import (
 	"image/color"
 	"math/rand"
 
-	"rlbb/lib/vector"
+	"bangbang/lib/vector"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 	ns "github.com/ojrac/opensimplex-go"

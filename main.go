@@ -5,7 +5,6 @@ import (
 	"math/rand"
 	"time"
 
-	gui "github.com/gen2brain/raylib-go/raygui"
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
@@ -37,7 +36,7 @@ func main() {
 		Game.finalize()
 	}()
 
-	gui.LoadGuiStyle("res/dark.style")
+	// gui.LoadGuiStyle("res/dark.style")
 
 	var tnow, tprev int64
 	for !rl.WindowShouldClose() {
@@ -185,12 +184,15 @@ func gameKeys() {
 		Game.sm.Mute = !Game.sm.Mute
 	}
 	// debug
-	if rl.IsKeyPressed(rl.KeyF1) {
+	if rl.IsKeyPressed(rl.KeyF3) {
 		debug = !debug
 	}
 	// gui
 	if rl.IsKeyPressed(rl.KeyF2) {
 		showgui = !showgui
+	}
+	if rl.IsKeyPressed(rl.KeyF1) {
+		showKeys = !showKeys
 	}
 	// reset shields
 	if rl.IsKeyPressed('R') {

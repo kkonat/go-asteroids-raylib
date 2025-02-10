@@ -1,10 +1,10 @@
 package main
 
 import (
+	qt "bangbang/lib/quadtree"
+	v "bangbang/lib/vector"
 	"math"
 	"math/rand"
-	qt "rlbb/lib/quadtree"
-	v "rlbb/lib/vector"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )

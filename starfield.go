@@ -15,8 +15,8 @@ type starfield struct {
 	w, h        int32
 	starfTex    rl.Texture2D
 	shader      rl.Shader
-	time        []float32	// shader uniforms
-	iResolution []float32	// shader uniforms
+	time        []float32 // shader uniforms
+	iResolution []float32 // shader uniforms
 	timeLoc     int32
 }
 
@@ -29,7 +29,8 @@ func newStarfield(w, h int32, time []float32) *starfield {
 	rl.ImageCrop(img, rl.Rectangle{X: 0, Y: 0, Width: float32(w), Height: float32(h)})
 	sf.starfTex = rl.LoadTextureFromImage(img)
 	rl.UnloadImage(img)
-	sf.shader = rl.LoadShader("shaders/base.vs", "shaders/starfield.fs")
+	// sf.shader = rl.LoadShader("shaders/base.vs", "shaders/starfield.fs")
+	sf.shader = load_shaders("shaders/base.vs", "shaders/starfield.fs")
 
 	sf.time[0] = 9321
 	sf.iResolution = make([]float32, 2)

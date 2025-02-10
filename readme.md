@@ -1,10 +1,12 @@
-## Boom Boom ## 
+## Boom Boom
 
 ---
-A simple space shooter game, kind of asteroids clone, but gonna  add some aliens...<br>
-I wrote this to try out my skills in go. Uses a simple graphics lib (**raylib**) 
+
+A simple space shooter game, kind of asteroids clone, but gonna add some aliens...<br>
+I wrote this to try out my skills in go. Uses a simple graphics lib (**raylib**)
 
 _Controls:_
+
 - [**A**] - Turn left
 - [**S**], [**W**] - small thrust, more thrust
 - [**D**] - Turn right
@@ -17,12 +19,14 @@ _Controls:_
 - [**L**] - Weapons select
 - [**;**] - force field - pushes you away from Rocks nearby
 - [**'**] - Weapons select
-- [**Z**] = Spotlight mode
-- [**F1**] - toggle debug mode 
-- [**F2**] - GUI parameters tweaking
+- [**Z**] - Spotlight mode
+- [**F1**] - show help
+- [**F2**] - toggle debug mode
+- [**F3**] - GUI parameters tweaking
 - The closer is the ship to the purple planet, the faster it tops up the fuel
 
 Runs in a 1440 x 720 window. Keeps around 60 fps on Ryzen 7 (8core) with RX 480 gpu.
 
 ---
+
 <img src="https://github.com/kkonat/rl-bb/blob/master/imgs/Screen2.png?raw=true">

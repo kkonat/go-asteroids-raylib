@@ -1,18 +1,18 @@
 package main
 
 import (
+	qt "bangbang/lib/quadtree"
 	"fmt"
-	qt "rlbb/lib/quadtree"
 	"runtime"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
 const (
-	debugMemstats         = true
-	debugRocksQt          = false
+	showMemstats          = false
+	debugRocksQt          = true
 	debugShipPos          = false
-	degubDrawMissileLines = false
+	degubDrawMissileLines = true
 )
 
 // -- debug
@@ -48,7 +48,7 @@ func (gme *game) displayDebug() {
 		inc := func(l *int32) int32 { *l += 16; return *l }
 
 		//printMemoryUsage
-		if debugMemstats {
+		if showMemstats {
 			var m runtime.MemStats
 			runtime.ReadMemStats(&m)
 			str := fmt.Sprintf("Alloc = %v MiB", m.Alloc/1024/1024)
