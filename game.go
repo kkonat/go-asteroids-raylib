@@ -42,8 +42,8 @@ var showgui bool
 var showKeys bool = true
 
 type game struct {
-	sm   *sm.SoundManager
-	sprm *spriteManager
+	sm *sm.SoundManager
+	// sprm *spriteManager
 	sf   *starfield
 	time []float32 // gsls uniform [1]float32
 
@@ -177,7 +177,7 @@ func newGame(w, h int32) *game {
 
 	// debug = startWithDebugOn
 
-	g.sprm = newSpriteManager()
+	// g.sprm = newSpriteManager()
 
 	g.ship = newShip(float64(w/2), float64(h/2), 1000, 1000)
 	g.ship.Rot = 45 - 180
@@ -528,7 +528,7 @@ func processMouse() {
 func (g *game) finalize() {
 	rl.CloseWindow()
 	g.sm.UnloadAll()
-	g.sprm.unloadAll()
+	// g.sprm.unloadAll()
 	g.pp.Finalize()
 	deinitParticleShareds()
 }

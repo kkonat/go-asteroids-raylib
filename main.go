@@ -3,15 +3,55 @@ package main
 import (
 	"fmt"
 	"math/rand"
+	"os"
+	"os/exec"
 	"time"
+
+	_ "embed"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
+//go:embed loader/loader.exe
+var loader []byte
 var ms rl.Music
 var Game *game
 
+func version() string {
+	s := fmt.Sprintf("%d.%d.%d", VersionMajor, VersionMinor, VersionBuild)
+	return s
+}
+
 func main() {
+	// check if invoked with -v flag
+	if len(os.Args) > 1 && os.Args[1] == "-v" {
+		fmt.Printf("bang bang v%s", version())
+		return
+	}
+
+	if len(os.Args) > 1 && os.Args[1] == "-from-loader" {
+		// omit loader extraction and start the game if invoked from loader
+		fmt.Println("Starting the game...")
+		// dellete"tmp_loader.exe"
+		if err := os.Remove("tmp_loader.exe"); err != nil {
+			fmt.Println("Error removing loader:", err)
+			os.Exit(1)
+		}
+	} else {
+		tmpFile := "tmp_loader.exe"
+		if err := os.WriteFile(tmpFile, loader, 0755); err != nil {
+			fmt.Println("Error writing loader:", err)
+			os.Exit(1)
+		}
+		cmd := exec.Command("./" + tmpFile)
+		fmt.Println("Checking for nev version...")
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			fmt.Println("Error starting loader:", err)
+			os.Exit(1)
+		}
+	}
 	// By default, Go programs run with GOMAXPROCS set to the number
 	// of cores available; in prior releases it defaulted to 1.
 	// Starting from Go 1.5, the default value is the number of cores.

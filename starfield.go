@@ -1,8 +1,13 @@
 package main
 
 import (
+	_ "embed"
+
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
+
+//go:embed res/Space.png
+var space []byte
 
 type star struct {
 	y        int32
@@ -25,7 +30,9 @@ func newStarfield(w, h int32, time []float32) *starfield {
 	sf.time = time
 	sf.w, sf.h = w, h
 
-	img := rl.LoadImage("res/Space.png")
+	// img := rl.LoadImage("res/Space.png")
+	img := rl.LoadImageFromMemory(".png", space, int32(len(space)))
+
 	rl.ImageCrop(img, rl.Rectangle{X: 0, Y: 0, Width: float32(w), Height: float32(h)})
 	sf.starfTex = rl.LoadTextureFromImage(img)
 	rl.UnloadImage(img)
